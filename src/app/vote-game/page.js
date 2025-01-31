@@ -1,11 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Spinner from '@/components/Spinner';
+import Title from '@/components/Title';
 
 const VoteGame = () => {
   const [joke, setJoke] = useState(null);
-  const [votes, setVotes] = useState({});
+  const [, setVotes] = useState({});
   const [isLoading, setIsLoading] = useState(true);
+  const [showAnswer, setShowAnswer] = useState(false);
 
   const fetchJoke = async () => {
     try {
@@ -40,6 +42,10 @@ const VoteGame = () => {
     }
   };
 
+  const toggleAnswer = () => {
+    setShowAnswer(!showAnswer);
+  };
+
   useEffect(() => {
     fetchJoke();
   }, []);
@@ -53,12 +59,15 @@ const VoteGame = () => {
   return (
     <div className="flex flex-col items-center justify-center flex-1 p-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 h-screen">
       <h1 className="text-2xl font-bold mb-8 text-white">Vote for the best joke of the day!</h1>
-      
+
       {joke && (
         <div className="flex flex-col items-center justify-center gap-4 max-w-md w-full">
           <div className="bg-white/90 backdrop-blur-sm p-6 rounded-lg shadow-lg w-full border border-white/20">
             <p className="text-lg font-medium mb-4">{joke.question}</p>
-            <p className="text-lg">{joke.answer}</p>
+            {showAnswer && <Title text={joke.answer} />}
+            <button onClick={toggleAnswer} className="text-sm text-blue-500 hover:text-blue-600">
+              {showAnswer ? 'Hide Answer' : 'Show Answer'}
+            </button>
           </div>
 
           <div className="flex flex-wrap justify-center gap-4 mt-6">
