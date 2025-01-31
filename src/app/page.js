@@ -15,7 +15,7 @@ const tabs = [
     path: '/guess-game',
   },
   {
-    title: 'Voute game',
+    title: 'Vote the joke',
     id: 'vote-game',
     path: '/vote-game',
   },
