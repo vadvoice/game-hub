@@ -78,3 +78,7 @@ App that allows users to vote on daily jokes using emojis. Users can fetch rando
 - Seamless joke navigation with vote persistence
 - Clean and intuitive user interface
 - Responsive design that works across devices
+
+
+### **Demo | Ref
+- [The game](https://guess-the-word-ochre.vercel.app/vote-game)

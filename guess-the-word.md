@@ -75,3 +75,6 @@ A word guessing game where players try to guess predefined words with hints. The
 - Smooth progression through word list
 - Clean and intuitive user interface
 - Responsive design that works across devices
+
+### Demo | Ref
+- [The game](https://guess-the-word-ochre.vercel.app/guess-game)
