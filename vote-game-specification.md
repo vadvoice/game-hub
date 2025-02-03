@@ -17,11 +17,14 @@ App that allows users to vote on daily jokes using emojis. Users can fetch rando
 
 3. **User Interface:**  
    - Clean, modern design with gradient background
-   - Loading spinner for better user experience
-   - Responsive layout that works on all devices
+      - TIP: to speed up your work you can use ready-made component libraries
+         - https://daisyui.com/
+         - https://tailwindcss.com/
+   - [OPTIONAL] Responsive layout that works on all devices
 
 4. **State Management:**  
    - Use React state to manage jokes and votes
+      - [OPTIONAL] React Contenxt API
    - Use fetch API for HTTP requests to interact with the backend
 
 ---
@@ -30,6 +33,7 @@ App that allows users to vote on daily jokes using emojis. Users can fetch rando
 0. **Data Source and Storage:**
    - Fetch random jokes from external API: https://teehee.dev/api/joke
    - Store fetched jokes in database for persistence
+      - MongoDB [https://www.mongodb.com/]
    - Database schema:
       - Collection: jokes
       - Document structure: See format defined in section #2 below
@@ -44,11 +48,20 @@ App that allows users to vote on daily jokes using emojis. Users can fetch rando
      "id": "unique_joke_id",
      "question": "Why did the developer go broke?",
      "answer": "Because he used up all his cache!",
-     "votes": {
-       "😂": 10,
-       "👍": 5,
-       "❤️": 3
-     },
+     "votes": [
+         {
+            "value": 10,
+            "label":  "😂"
+         },
+         {
+            "value": 5,
+            "label":  "👍"
+         },
+         {
+            "value": 3,
+            "label":  "❤️"
+         }
+     ],
      "availableVotes": ["😂", "👍", "❤️"]
    }
    ```
