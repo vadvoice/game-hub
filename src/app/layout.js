@@ -25,15 +25,15 @@ export default function RootLayout({ children }) {
         <header className="bg-gray-900 text-white p-4 shadow-md">
           <div className="container mx-auto flex justify-between items-center">
             <a href="/" className="hover:text-gray-300 transition-colors">
-              <h1 className="text-xl font-semibold">Guess the word</h1>
+              <h1 className="text-xl font-semibold">Game hub</h1>
             </a>
             <div className="flex gap-4">
               <a href="/vote-game" className="hover:text-gray-300 transition-colors">
                 Vote Game
               </a>
-            <a href="/guess-game" className="hover:text-gray-300 transition-colors">
-              Guess Game
-            </a>
+              <a href="/guess-game" className="hover:text-gray-300 transition-colors">
+                Guess Game
+              </a>
             </div>
           </div>
         </header>

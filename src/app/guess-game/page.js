@@ -1,8 +1,12 @@
-'use client';
 import GuessWord from '@/components/GuessWord';
 import GameBoard from '@/components/GameBoard';
 
-const Game = () => {
+export const metadata = {
+  title: 'Guess the word',
+  description: 'Guess the word',
+};
+
+const TheGuessGame = () => {
   return (
     <div className="flex flex-col items-center justify-center h-screen">
       <GameBoard />
@@ -13,4 +17,4 @@ const Game = () => {
   );
 };
 
-export default Game;
+export default TheGuessGame;
