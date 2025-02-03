@@ -1,50 +1,77 @@
-### **"Guess the Word" Game **  
+### **"Guess the Word" Game**
 
-This project will allow users to create a guessing game by setting a list of words. Once the game starts, players will try to guess the words, receiving hints along the way. The app will have a React frontend, a Node.js backend, and a MongoDB database. WebSockets will be used for real-time gameplay.  
-
----
-
-### **Frontend (React)**  
-
-1. **Game Setup (Before Starting the Game)**  
-   - A user can create a new game by entering a list of words (e.g., ["apple", "banana", "grape"]).  
-   - A "Start Game" button should begin the game.  
-
-2. **Gameplay**  
-   - The first word from the list is displayed as a hidden word (e.g., "_ _ _ _ _").  
-   - Players type their guesses into an input field.  
-   - If the guessed word matches, move to the next word.  
-   - Provide hints (e.g., first letter, number of letters).  
-
-3. **State Management**  
-   - Use React state or Context API to manage game progress.  
-   - Use Axios or fetch for HTTP requests.  
+A word guessing game where players try to guess predefined words with hints. The app features a React frontend and a Next.js API backend.
 
 ---
 
-### **Backend (Node.js + Express + MongoDB + Socket.io)**  
+### **Frontend (React)**
+1. **Game Display:**
+   - Show the current word as hidden characters (e.g., "_ _ _ _ _")
+   - Display hint for the current word
+   - Show game progress (current word number / total words)
+   - Include a hint system showing the first letter
 
-1. **API Routes**  
-   - **POST /game:** Create a new game with a list of words.  
-   - **GET /game/:id:** Fetch the current game state (current word, guessed words, etc.).  
-   - **POST /guess:** Validate a user's guess and update the game state if correct.  
+2. **Guessing Mechanism:**
+   - Input field for players to type their guesses
+   - Submit button to validate guesses
+   - Instant feedback on correct/incorrect guesses
+   - Automatic progression to next word on correct guess
 
-2. **Database (MongoDB Schema Example)**  
+3. **User Interface:**
+   - Clean, modern design with gradient background
+      - TIP: to speed up your work you can use ready-made component libraries
+         - https://daisyui.com/
+         - https://tailwindcss.com/
+   - [OPTIONAL] Responsive layout that works on all devices
+
+4. **State Management:**
+   - Use React state to manage game progress and guesses
+      - [OPTIONAL] React Context API
+   - Use fetch API for HTTP requests to interact with the backend
+
+---
+
+### **Backend (API)**
+1. **Data Storage:**
+   - Store word lists in MongoDB database
+   - Each game maintains its own word list and progress
+   - Database schema: See format defined in section #3 below
+
+2. **API Routes:**
+   - **POST /api/game:** Create a new game with word list
+   - **GET /api/game/:id:** Fetch current game state
+   - **POST /api/guess:** Submit and validate a guess
+
+3. **Data Structure:**
    ```json
    {
-     "gameId": "123abc",
-     "words": ["apple", "banana", "grape"],
-     "currentWordIndex": 0,
-     "guessedWords": []
+     "gameId": "unique_game_id",
+     "name": "Animals",
+     "list": [
+       {
+         "word": "elephant",
+         "hint": "Large gray mammal"
+       },
+       {
+         "word": "giraffe",
+         "hint": "Long-necked African animal"
+       }
+     ],
+     "current": 1,
+     "completed": []
    }
    ```
 
-3. **WebSocket Integration(optional)**  
-   - When a player makes a correct guess, broadcast the new word to all users.  
+4. **Features:**
+   - Track game progress
+   - Validate guesses
+   - Store multiple word lists
+   - Provide hints system
 
 ---
 
-### **Expected Outcomes**  
-- A simple but fun word guessing game.
-- Demonstrates the use of simple Node.js/Express server and MongoDB.
-- Optional WebSockets usage
+### **Expected Outcomes**
+- An engaging word guessing experience
+- Smooth progression through word list
+- Clean and intuitive user interface
+- Responsive design that works across devices
