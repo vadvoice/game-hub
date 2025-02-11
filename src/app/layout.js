@@ -34,6 +34,9 @@ export default function RootLayout({ children }) {
               <a href="/guess-game" className="hover:text-gray-300 transition-colors">
                 Guess Game
               </a>
+              <a href="/solitier-game" className="hover:text-gray-300 transition-colors">
+                Solitier Game
+              </a>
             </div>
           </div>
         </header>
