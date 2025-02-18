@@ -63,7 +63,7 @@ const VoteGame = () => {
 
       {joke && (
         <div className="flex flex-col items-center justify-center gap-4 max-w-md w-full">
-          <div className="bg-white/90 backdrop-blur-sm p-6 rounded-lg shadow-lg w-full border border-white/20">
+          <div className="bg-gray-900 backdrop-blur-sm p-6 rounded-lg shadow-lg w-full border border-white/20">
             <p className="text-lg font-medium mb-4">{joke.question}</p>
             {showAnswer && <Title text={joke.answer} />}
             <button onClick={toggleAnswer} className="text-sm text-blue-500 hover:text-blue-600">

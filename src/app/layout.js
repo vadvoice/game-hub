@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import { games } from "@/utils/constants";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,15 +29,11 @@ export default function RootLayout({ children }) {
               <h1 className="text-xl font-semibold">Game hub</h1>
             </a>
             <div className="flex gap-4">
-              <a href="/vote-game" className="hover:text-gray-300 transition-colors">
-                Vote Game
-              </a>
-              <a href="/guess-game" className="hover:text-gray-300 transition-colors">
-                Guess Game
-              </a>
-              <a href="/solitier-game" className="hover:text-gray-300 transition-colors">
-                Solitier Game
-              </a>
+              {games.map((game) => (
+                <a href={game.path} className="hover:text-gray-300 transition-colors">
+                  {game.title}
+                </a>
+              ))}
             </div>
           </div>
         </header>

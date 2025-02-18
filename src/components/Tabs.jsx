@@ -62,7 +62,7 @@ const Tabs = ({
           <span
             key={index}
             ref={(el) => (wordRefs.current[index] = el)}
-            className="relative text-[3rem] font-black cursor-pointer text-white"
+            className="relative text-[2rem] font-black cursor-pointer text-white"
             style={{
               filter: manualMode
                 ? isActive
