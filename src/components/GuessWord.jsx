@@ -6,6 +6,7 @@ const GuessWord = () => {
   const [game, setGame] = useState(null);
   const [guess, setGuess] = useState('');
   const [message, setMessage] = useState('');
+  const [showHint, setShowHint] = useState(false);
 
   useEffect(() => {
     fetch('/api/game')
@@ -43,11 +44,15 @@ const GuessWord = () => {
       {game && (
         <div className="flex flex-col items-center gap-4">
           <h1 className="text-2xl font-mono"><Title text={`The game is: ${game.name}`} /></h1>
-          <p className="text-2xl font-mono">{hiddenWord}</p>
-          <p className="text-sm">Hint: {hint}</p>
+          <p className="text-sm text-gray-600">Topic: {game.list[game.current - 1]?.topic}</p>
+          <div className="text-center">
+            <p className="text-2xl font-mono">{hiddenWord}</p>
+            <p className="text-sm mt-4">Hint: {showHint ? <Title text={hint} /> : <button className="text-blue-500 hover:text-blue-600" onClick={() => setShowHint(true)}>Show Hint</button>}</p>
+          </div>
           <form onSubmit={handleGuess} className="flex gap-2">
             <input
               type="text"
+              required
               value={guess}
               onChange={(e) => setGuess(e.target.value)}
               className="border p-2 rounded"
