@@ -30,7 +30,7 @@ export default function RootLayout({ children }) {
             </a>
             <div className="flex gap-4">
               {games.map((game) => (
-                <a href={game.path} className="hover:text-gray-300 transition-colors">
+                <a key={game.path} href={game.path} className="hover:text-gray-300 transition-colors">
                   {game.title}
                 </a>
               ))}
