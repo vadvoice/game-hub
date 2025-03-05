@@ -1,4 +1,3 @@
-
 const games = [
   {
     title: 'Guess the Word',
@@ -17,6 +16,12 @@ const games = [
     description: 'Solitaire is a card game that is played by one player. The goal is to move all the cards to the foundation piles, one card at a time.',
     id: 'solitier-game',
     path: '/solitier-game',
+  },
+  {
+    title: '3D Shooter',
+    description: 'A 3D first-person shooter game where you can move around, shoot enemies, and pick up new weapons.',
+    id: 'shooter-game',
+    path: '/shooter-game',
   },
 ];
 
