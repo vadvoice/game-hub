@@ -26,6 +26,8 @@ export default function ShooterGame() {
   const [isClient, setIsClient] = useState(false);
   const isPaused = useGameStore((state) => state.isPaused);
   const togglePause = useGameStore((state) => state.togglePause);
+  const mouseSensitivity = useGameStore((state) => state.mouseSensitivity);
+  const updateMouseSensitivity = useGameStore((state) => state.updateMouseSensitivity);
   const controlsRef = useRef();
   const canvasRef = useRef();
   const [isLocked, setIsLocked] = useState(false);
@@ -98,16 +100,52 @@ export default function ShooterGame() {
       // Reset any camera roll to ensure horizon is flat
       controlsRef.current.camera.rotation.z = 0;
       
+      // Configure PointerLockControls for better gameplay
+      controlsRef.current.sensitivity = mouseSensitivity; // Use sensitivity from game store
+      controlsRef.current.minPolarAngle = 0.1; // Prevent looking straight up
+      controlsRef.current.maxPolarAngle = Math.PI - 0.1; // Prevent looking straight down
+      
       // Lock the z-rotation to prevent tilting
       const originalUpdate = controlsRef.current.update;
       controlsRef.current.update = function() {
         originalUpdate.call(this);
-        this.camera.rotation.z = 0; // Keep horizon level
+        
+        // Keep horizon level by forcing z-rotation to 0
+        this.camera.rotation.z = 0;
+        
+        // Add safety limits for x-rotation to prevent flipping
+        const safetyMargin = 0.1;
+        this.camera.rotation.x = Math.max(
+          -Math.PI / 2 + safetyMargin, 
+          Math.min(Math.PI / 2 - safetyMargin, this.camera.rotation.x)
+        );
       };
       
-      console.log("Camera roll locked to keep horizon level");
+      console.log("Camera controls configured for optimal gameplay");
     }
-  }, [controlsRef.current]);
+  }, [controlsRef.current, mouseSensitivity]);
+
+  // Handle mouse wheel for sensitivity adjustment
+  useEffect(() => {
+    const handleWheel = (e) => {
+      if (e.ctrlKey || e.metaKey) { // Only adjust sensitivity with Ctrl/Cmd key pressed
+        e.preventDefault();
+        
+        // Adjust sensitivity up or down
+        const delta = e.deltaY > 0 ? -0.05 : 0.05;
+        const newSensitivity = Math.max(0.1, Math.min(2.0, mouseSensitivity + delta));
+        
+        updateMouseSensitivity(newSensitivity);
+        console.log("Mouse sensitivity adjusted to:", newSensitivity);
+      }
+    };
+    
+    document.addEventListener('wheel', handleWheel, { passive: false });
+    
+    return () => {
+      document.removeEventListener('wheel', handleWheel);
+    };
+  }, [mouseSensitivity, updateMouseSensitivity]);
 
   if (!isClient) return null;
 

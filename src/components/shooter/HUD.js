@@ -12,12 +12,19 @@ export default function HUD() {
   const isGameOver = useGameStore((state) => state.isGameOver);
   const resetGame = useGameStore((state) => state.resetGame);
   const switchWeapon = useGameStore((state) => state.switchWeapon);
+  const playerPosition = useGameStore((state) => state.playerPosition);
+  const isOnGround = useGameStore((state) => state.isOnGround);
+  const isAiming = useGameStore((state) => state.isAiming);
+  const mouseSensitivity = useGameStore((state) => state.mouseSensitivity);
   
   // Damage effect state
   const [showDamageEffect, setShowDamageEffect] = useState(false);
   const [lastHealth, setLastHealth] = useState(health);
   const [showHitMarker, setShowHitMarker] = useState(false);
   const [killFeed, setKillFeed] = useState([]);
+  const [isMoving, setIsMoving] = useState(false);
+  const [showSensitivity, setShowSensitivity] = useState(false);
+  const [lastSensitivity, setLastSensitivity] = useState(mouseSensitivity);
   
   // Format weapon name for display
   const formatWeaponName = (name) => {
@@ -74,6 +81,21 @@ export default function HUD() {
     }
   };
   
+  // Show sensitivity indicator when it changes
+  useEffect(() => {
+    if (mouseSensitivity !== lastSensitivity) {
+      setShowSensitivity(true);
+      setLastSensitivity(mouseSensitivity);
+      
+      // Hide after 2 seconds
+      const timer = setTimeout(() => {
+        setShowSensitivity(false);
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [mouseSensitivity, lastSensitivity]);
+  
   // Render crosshair
   const renderCrosshair = () => {
     return (
@@ -112,6 +134,24 @@ export default function HUD() {
       {/* Damage effect overlay */}
       {showDamageEffect && (
         <div className="absolute inset-0 pointer-events-none bg-red-500 bg-opacity-20 z-40 animate-pulse"></div>
+      )}
+      
+      {/* Sensitivity indicator */}
+      {showSensitivity && (
+        <div className="absolute top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 bg-opacity-70 px-4 py-2 rounded text-white text-center">
+          <div className="text-sm">Mouse Sensitivity</div>
+          <div className="flex items-center mt-1">
+            <span className="text-xs">Low</span>
+            <div className="w-32 h-2 mx-2 bg-gray-700 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-blue-500"
+                style={{ width: `${(mouseSensitivity / 2) * 100}%` }}
+              ></div>
+            </div>
+            <span className="text-xs">High</span>
+          </div>
+          <div className="text-xs mt-1">{mouseSensitivity.toFixed(2)}</div>
+        </div>
       )}
       
       {/* Crosshair */}

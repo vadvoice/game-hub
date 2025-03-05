@@ -11,7 +11,7 @@ import useGameStore from '@/utils/gameStore';
 const WEAPON_PROPERTIES = {
   pistol: {
     damage: 25,
-    recoil: 0.02,
+    recoil: 0.015,
     cooldown: 300, // ms
     bulletSpeed: 50,
     bulletSize: 0.05,
@@ -19,7 +19,7 @@ const WEAPON_PROPERTIES = {
   },
   shotgun: {
     damage: 80,
-    recoil: 0.1,
+    recoil: 0.04,
     cooldown: 800, // ms
     bulletSpeed: 40,
     bulletSize: 0.08,
@@ -29,7 +29,7 @@ const WEAPON_PROPERTIES = {
   },
   rifle: {
     damage: 40,
-    recoil: 0.05,
+    recoil: 0.02,
     cooldown: 150, // ms
     bulletSpeed: 70,
     bulletSize: 0.03,
@@ -225,9 +225,15 @@ export default function Player() {
     // Store current base rotation before applying recoil
     setBaseRotationX(camera.rotation.x);
     
-    // Apply recoil to camera
+    // Apply recoil to camera with safety limits
     const recoil = WEAPON_PROPERTIES[currentWeapon].recoil;
-    camera.rotation.x -= recoil;
+    
+    // Calculate new rotation with recoil (apply to camera directly)
+    // Note: With PointerLockControls, we need to be careful with direct camera manipulation
+    const newRotationX = camera.rotation.x - recoil;
+    
+    // Apply rotation with limits to prevent flipping
+    camera.rotation.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, newRotationX));
     
     // Set recoil amount for recovery
     setRecoilAmount(recoil);
@@ -305,9 +311,15 @@ export default function Player() {
     
     // Handle recoil recovery
     if (recoilAmount > 0) {
-      // Gradually recover from recoil
+      // Gradually recover from recoil with smoother motion
       const recovery = Math.min(recoilAmount, recoilRecoverySpeed * delta * 60);
-      camera.rotation.x += recovery;
+      
+      // Calculate new rotation with recovery
+      const newRotationX = camera.rotation.x + recovery;
+      
+      // Apply rotation with limits to prevent flipping
+      camera.rotation.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, newRotationX));
+      
       setRecoilAmount(prev => Math.max(0, prev - recovery));
       
       // Ensure we don't overshoot the original rotation
@@ -393,32 +405,6 @@ export default function Player() {
     return () => window.removeEventListener('mousedown', handleMouseDown);
   }, [isPaused, isGameOver, currentWeapon, ammo]);
   
-  // Handle mouse movement for camera rotation
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (isPaused || isGameOver || document.pointerLockElement !== document.body) return;
-      
-      // Update camera rotation based on mouse movement
-      const sensitivity = 0.002;
-      camera.rotation.y -= e.movementX * sensitivity;
-      
-      // Limit vertical rotation to avoid flipping
-      const newRotationX = camera.rotation.x - e.movementY * sensitivity;
-      camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, newRotationX));
-      
-      // Update base rotation X for recoil recovery
-      setBaseRotationX(camera.rotation.x);
-      
-      // Always ensure z-rotation is 0 to keep horizon level
-      camera.rotation.z = 0;
-      
-      setCameraRotation(camera.rotation.clone());
-    };
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    return () => document.removeEventListener('mousemove', handleMouseMove);
-  }, [isPaused, isGameOver, camera]);
-  
   // Player movement and physics
   useFrame((state, delta) => {
     if (!playerRef.current || isPaused || isGameOver) return;
@@ -428,6 +414,18 @@ export default function Player() {
     
     // Update camera position to follow player
     camera.position.set(position.x, position.y + 1.5, position.z);
+    
+    // Safety check to prevent camera flipping
+    if (camera.rotation.x < -Math.PI / 2 + 0.1 || camera.rotation.x > Math.PI / 2 - 0.1) {
+      console.warn("Camera rotation out of bounds, resetting to safe value");
+      camera.rotation.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, camera.rotation.x));
+    }
+    
+    // Always ensure z-rotation is 0 to keep horizon level
+    camera.rotation.z = 0;
+    
+    // Store current rotation for recoil recovery
+    setBaseRotationX(camera.rotation.x);
     
     // Calculate movement direction based on camera direction
     const moveDirection = new Vector3();

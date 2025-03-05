@@ -13,6 +13,7 @@ const useGameStore = create((set, get) => ({
     rifle: 0,
   },
   playerPosition: new Vector3(0, 1, 0),
+  mouseSensitivity: 0.6, // Default sensitivity
   
   // Game state
   isPaused: false,
@@ -101,6 +102,10 @@ const useGameStore = create((set, get) => ({
     playerPosition: position,
   }),
   
+  updateMouseSensitivity: (sensitivity) => set({
+    mouseSensitivity: sensitivity,
+  }),
+  
   resetGame: () => {
     console.log("Game reset");
     set({
@@ -114,6 +119,7 @@ const useGameStore = create((set, get) => ({
         rifle: 0,
       },
       playerPosition: new Vector3(0, 1, 0),
+      mouseSensitivity: 0.6, // Reset to default
       isPaused: false,
       isGameOver: false,
       enemies: [],
