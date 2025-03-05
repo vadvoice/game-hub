@@ -3,8 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
-import { useTexture } from '@react-three/drei';
-import { Vector3, TextureLoader } from 'three';
+import { Vector3 } from 'three';
 import useGameStore from '@/utils/gameStore';
 
 // Generate random obstacles function (moved outside component)
@@ -49,36 +48,9 @@ export default function GameWorld() {
   // Initialize obstacles state
   const [obstacles] = useState(generateObstacles);
   
-  // Use state for textures instead of hooks in conditionals
-  const [textures, setTextures] = useState({
-    floor: null,
-    wall: null
-  });
-  
-  // Load textures using useEffect to avoid hooks order issues
-  useEffect(() => {
-    const loader = new TextureLoader();
-    
-    try {
-      loader.loadAsync('/textures/floor.jpg')
-        .then(texture => {
-          setTextures(prev => ({ ...prev, floor: texture }));
-        })
-        .catch(error => {
-          console.warn('Floor texture not found, using fallback color', error);
-        });
-        
-      loader.loadAsync('/textures/wall.jpg')
-        .then(texture => {
-          setTextures(prev => ({ ...prev, wall: texture }));
-        })
-        .catch(error => {
-          console.warn('Wall texture not found, using fallback color', error);
-        });
-    } catch (error) {
-      console.warn('Error loading textures, using fallback colors', error);
-    }
-  }, []);
+  // Define colors for materials
+  const floorColor = '#555555';
+  const wallColor = '#777777';
   
   // Optional: Animate or update the world
   useFrame((state, delta) => {
@@ -96,11 +68,8 @@ export default function GameWorld() {
         {/* Main floor with precise alignment */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
           <planeGeometry args={[110, 110]} /> {/* Increased size to prevent gaps */}
-          <meshStandardMaterial 
-            map={textures.floor} 
-            color={textures.floor ? undefined : '#555555'}
-            roughness={0.8}
-            metalness={0.2}
+          <meshBasicMaterial 
+            color={floorColor}
           />
         </mesh>
         
@@ -112,9 +81,8 @@ export default function GameWorld() {
       <RigidBody type="fixed" position={[50, 0, 50]}>
         <mesh receiveShadow position={[0, 0, 0]}>
           <boxGeometry args={[10, 0.2, 10]} />
-          <meshStandardMaterial 
-            map={textures.floor} 
-            color={textures.floor ? undefined : '#555555'}
+          <meshBasicMaterial 
+            color={floorColor}
           />
         </mesh>
       </RigidBody>
@@ -122,9 +90,8 @@ export default function GameWorld() {
       <RigidBody type="fixed" position={[-50, 0, 50]}>
         <mesh receiveShadow position={[0, 0, 0]}>
           <boxGeometry args={[10, 0.2, 10]} />
-          <meshStandardMaterial 
-            map={textures.floor} 
-            color={textures.floor ? undefined : '#555555'}
+          <meshBasicMaterial 
+            color={floorColor}
           />
         </mesh>
       </RigidBody>
@@ -132,9 +99,8 @@ export default function GameWorld() {
       <RigidBody type="fixed" position={[50, 0, -50]}>
         <mesh receiveShadow position={[0, 0, 0]}>
           <boxGeometry args={[10, 0.2, 10]} />
-          <meshStandardMaterial 
-            map={textures.floor} 
-            color={textures.floor ? undefined : '#555555'}
+          <meshBasicMaterial 
+            color={floorColor}
           />
         </mesh>
       </RigidBody>
@@ -142,9 +108,8 @@ export default function GameWorld() {
       <RigidBody type="fixed" position={[-50, 0, -50]}>
         <mesh receiveShadow position={[0, 0, 0]}>
           <boxGeometry args={[10, 0.2, 10]} />
-          <meshStandardMaterial 
-            map={textures.floor} 
-            color={textures.floor ? undefined : '#555555'}
+          <meshBasicMaterial 
+            color={floorColor}
           />
         </mesh>
       </RigidBody>
@@ -153,9 +118,8 @@ export default function GameWorld() {
       <RigidBody type="fixed" position={[0, 2, -50]}>
         <mesh castShadow receiveShadow>
           <boxGeometry args={[100, 4, 1]} />
-          <meshStandardMaterial 
-            map={textures.wall} 
-            color={textures.wall ? undefined : '#777777'}
+          <meshBasicMaterial 
+            color={wallColor}
           />
         </mesh>
       </RigidBody>
@@ -163,9 +127,8 @@ export default function GameWorld() {
       <RigidBody type="fixed" position={[0, 2, 50]}>
         <mesh castShadow receiveShadow>
           <boxGeometry args={[100, 4, 1]} />
-          <meshStandardMaterial 
-            map={textures.wall} 
-            color={textures.wall ? undefined : '#777777'}
+          <meshBasicMaterial 
+            color={wallColor}
           />
         </mesh>
       </RigidBody>
@@ -173,9 +136,8 @@ export default function GameWorld() {
       <RigidBody type="fixed" position={[-50, 2, 0]}>
         <mesh castShadow receiveShadow>
           <boxGeometry args={[1, 4, 100]} />
-          <meshStandardMaterial 
-            map={textures.wall} 
-            color={textures.wall ? undefined : '#777777'}
+          <meshBasicMaterial 
+            color={wallColor}
           />
         </mesh>
       </RigidBody>
@@ -183,9 +145,8 @@ export default function GameWorld() {
       <RigidBody type="fixed" position={[50, 2, 0]}>
         <mesh castShadow receiveShadow>
           <boxGeometry args={[1, 4, 100]} />
-          <meshStandardMaterial 
-            map={textures.wall} 
-            color={textures.wall ? undefined : '#777777'}
+          <meshBasicMaterial 
+            color={wallColor}
           />
         </mesh>
       </RigidBody>
@@ -199,7 +160,7 @@ export default function GameWorld() {
             rotation={[0, obstacle.rotation, 0]}
           >
             <boxGeometry args={obstacle.size} />
-            <meshStandardMaterial color={obstacle.color} />
+            <meshBasicMaterial color={obstacle.color} />
           </mesh>
         </RigidBody>
       ))}
@@ -208,7 +169,7 @@ export default function GameWorld() {
       <RigidBody type="fixed" position={[0, 0.5, 0]}>
         <mesh castShadow receiveShadow>
           <cylinderGeometry args={[5, 5, 1, 32]} />
-          <meshStandardMaterial color="#444444" />
+          <meshBasicMaterial color="#444444" />
         </mesh>
       </RigidBody>
       
