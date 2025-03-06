@@ -3,7 +3,7 @@
 import { Canvas } from '@react-three/fiber';
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { Physics } from '@react-three/rapier';
-import { PointerLockControls, Sky, Stars, KeyboardControls } from '@react-three/drei';
+import { Sky, Stars, KeyboardControls } from '@react-three/drei';
 import { EffectComposer, Bloom, Noise } from '@react-three/postprocessing';
 import GameWorld from './shooter/GameWorld';
 import Player from './shooter/Player';
@@ -28,15 +28,15 @@ export default function ShooterGame() {
   const togglePause = useGameStore((state) => state.togglePause);
   const mouseSensitivity = useGameStore((state) => state.mouseSensitivity);
   const updateMouseSensitivity = useGameStore((state) => state.updateMouseSensitivity);
-  const controlsRef = useRef();
   const canvasRef = useRef();
+  const cameraRef = useRef();
   const [isLocked, setIsLocked] = useState(false);
   
   // Handle pointer lock
   const lockPointer = () => {
-    if (controlsRef.current) {
+    if (document.pointerLockElement !== document.body) {
+      document.body.requestPointerLock();
       console.log("Attempting to lock pointer");
-      controlsRef.current.lock();
     }
   };
   
@@ -84,7 +84,7 @@ export default function ShooterGame() {
   
   // Auto-lock pointer when game starts or unpauses
   useEffect(() => {
-    if (isClient && !isPaused && controlsRef.current && !isLocked) {
+    if (isClient && !isPaused && !isLocked) {
       // Small delay to ensure everything is loaded
       const timer = setTimeout(() => {
         lockPointer();
@@ -94,36 +94,44 @@ export default function ShooterGame() {
     }
   }, [isClient, isPaused, isLocked]);
 
-  // Fix camera rotation to ensure horizon is level
+  // Handle mouse movement for camera rotation
   useEffect(() => {
-    if (controlsRef.current) {
-      // Reset any camera roll to ensure horizon is flat
-      controlsRef.current.camera.rotation.z = 0;
+    if (!cameraRef.current) return;
+    
+    const camera = cameraRef.current;
+    
+    // Initialize camera rotation
+    camera.rotation.order = 'YXZ'; // This order is important for FPS controls
+    
+    const handleMouseMove = (e) => {
+      if (isPaused || !isLocked) return;
       
-      // Configure PointerLockControls for better gameplay
-      controlsRef.current.sensitivity = mouseSensitivity; // Use sensitivity from game store
-      controlsRef.current.minPolarAngle = 0.1; // Prevent looking straight up
-      controlsRef.current.maxPolarAngle = Math.PI - 0.1; // Prevent looking straight down
+      // Calculate rotation based on mouse movement
+      const sensitivity = mouseSensitivity * 0.002;
       
-      // Lock the z-rotation to prevent tilting
-      const originalUpdate = controlsRef.current.update;
-      controlsRef.current.update = function() {
-        originalUpdate.call(this);
-        
-        // Keep horizon level by forcing z-rotation to 0
-        this.camera.rotation.z = 0;
-        
-        // Add safety limits for x-rotation to prevent flipping
-        const safetyMargin = 0.1;
-        this.camera.rotation.x = Math.max(
-          -Math.PI / 2 + safetyMargin, 
-          Math.min(Math.PI / 2 - safetyMargin, this.camera.rotation.x)
-        );
-      };
+      // Horizontal movement (left/right) changes Y rotation (yaw)
+      camera.rotation.y -= e.movementX * sensitivity;
       
-      console.log("Camera controls configured for optimal gameplay");
-    }
-  }, [controlsRef.current, mouseSensitivity]);
+      // Vertical movement (up/down) changes X rotation (pitch)
+      const newRotationX = camera.rotation.x - e.movementY * sensitivity;
+      
+      // Limit vertical rotation to prevent flipping
+      const safetyMargin = 0.1;
+      camera.rotation.x = Math.max(
+        -Math.PI / 2 + safetyMargin, 
+        Math.min(Math.PI / 2 - safetyMargin, newRotationX)
+      );
+      
+      // Always ensure z-rotation is 0 to keep horizon level
+      camera.rotation.z = 0;
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [isPaused, isLocked, mouseSensitivity, cameraRef.current]);
 
   // Handle mouse wheel for sensitivity adjustment
   useEffect(() => {
@@ -165,8 +173,12 @@ export default function ShooterGame() {
         <Canvas 
           ref={canvasRef}
           shadows 
-          camera={{ fov: 75, near: 0.1, far: 1000 }}
+          camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 1.5, 0] }}
           className="w-full h-full"
+          onCreated={({ camera }) => {
+            cameraRef.current = camera;
+            camera.rotation.order = 'YXZ'; // Important for FPS controls
+          }}
         >
           <Suspense fallback={null}>
             <Sky sunPosition={[100, 20, 100]} />
@@ -182,7 +194,7 @@ export default function ShooterGame() {
             
             <Physics gravity={[0, -9.81, 0]}>
               <GameWorld />
-              <Player />
+              <Player cameraRef={cameraRef} />
               <Enemies />
               <Weapons />
             </Physics>
@@ -191,8 +203,6 @@ export default function ShooterGame() {
               <Bloom intensity={0.5} luminanceThreshold={0.9} luminanceSmoothing={0.9} />
               <Noise opacity={0.02} />
             </EffectComposer>
-            
-            <PointerLockControls ref={controlsRef} />
           </Suspense>
         </Canvas>
       </KeyboardControls>

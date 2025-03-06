@@ -37,9 +37,9 @@ const WEAPON_PROPERTIES = {
   },
 };
 
-export default function Player() {
+export default function Player({ cameraRef }) {
   const playerRef = useRef();
-  const { camera, scene } = useThree();
+  const { scene } = useThree();
   const { rapier, world } = useRapier();
   
   // Get game state from store
@@ -182,7 +182,7 @@ export default function Player() {
   
   // Handle shooting
   const shoot = () => {
-    if (isPaused || isGameOver || ammo[currentWeapon] <= 0) return;
+    if (isPaused || isGameOver || ammo[currentWeapon] <= 0 || !cameraRef.current) return;
     
     const now = Date.now();
     const cooldown = WEAPON_PROPERTIES[currentWeapon].cooldown;
@@ -198,7 +198,7 @@ export default function Player() {
     
     // Get camera direction for bullet trajectory
     const direction = new Vector3();
-    camera.getWorldDirection(direction);
+    cameraRef.current.getWorldDirection(direction);
     
     // Apply weapon properties
     const weaponProps = WEAPON_PROPERTIES[currentWeapon];
@@ -223,27 +223,23 @@ export default function Player() {
     }
     
     // Store current base rotation before applying recoil
-    setBaseRotationX(camera.rotation.x);
+    setBaseRotationX(cameraRef.current.rotation.x);
     
     // Apply recoil to camera with safety limits
     const recoil = WEAPON_PROPERTIES[currentWeapon].recoil;
     
-    // Calculate new rotation with recoil (apply to camera directly)
-    // Note: With PointerLockControls, we need to be careful with direct camera manipulation
-    const newRotationX = camera.rotation.x - recoil;
+    // Apply recoil to camera rotation
+    const newRotationX = cameraRef.current.rotation.x - recoil;
     
     // Apply rotation with limits to prevent flipping
-    camera.rotation.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, newRotationX));
+    cameraRef.current.rotation.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, newRotationX));
     
     // Set recoil amount for recovery
     setRecoilAmount(recoil);
     
-    // Ensure camera z-rotation stays at 0 to prevent horizon tilt
-    camera.rotation.z = 0;
-    
     // Direct hit check with raycaster
     const raycaster = new Raycaster();
-    raycaster.set(camera.position, direction);
+    raycaster.set(cameraRef.current.position, direction);
     
     // Find all enemies in the scene
     const enemies = findEnemies();
@@ -286,7 +282,7 @@ export default function Player() {
   
   // Create a bullet
   const createBullet = (direction, weaponProps) => {
-    const bulletPosition = camera.position.clone();
+    const bulletPosition = cameraRef.current.position.clone();
     // Move bullet forward a bit to avoid collision with player
     bulletPosition.add(direction.clone().multiplyScalar(1));
     
@@ -307,7 +303,7 @@ export default function Player() {
   
   // Update bullets and handle recoil recovery
   useFrame((state, delta) => {
-    if (isPaused || isGameOver) return;
+    if (isPaused || isGameOver || !cameraRef.current) return;
     
     // Handle recoil recovery
     if (recoilAmount > 0) {
@@ -315,21 +311,18 @@ export default function Player() {
       const recovery = Math.min(recoilAmount, recoilRecoverySpeed * delta * 60);
       
       // Calculate new rotation with recovery
-      const newRotationX = camera.rotation.x + recovery;
+      const newRotationX = cameraRef.current.rotation.x + recovery;
       
       // Apply rotation with limits to prevent flipping
-      camera.rotation.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, newRotationX));
+      cameraRef.current.rotation.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, newRotationX));
       
       setRecoilAmount(prev => Math.max(0, prev - recovery));
       
       // Ensure we don't overshoot the original rotation
-      if (camera.rotation.x > baseRotationX) {
-        camera.rotation.x = baseRotationX;
+      if (cameraRef.current.rotation.x > baseRotationX) {
+        cameraRef.current.rotation.x = baseRotationX;
         setRecoilAmount(0);
       }
-      
-      // Always ensure z-rotation is 0 to keep horizon level
-      camera.rotation.z = 0;
     }
     
     // Update bullet positions and check for collisions
@@ -403,29 +396,20 @@ export default function Player() {
     
     window.addEventListener('mousedown', handleMouseDown);
     return () => window.removeEventListener('mousedown', handleMouseDown);
-  }, [isPaused, isGameOver, currentWeapon, ammo]);
+  }, [isPaused, isGameOver, currentWeapon, ammo, cameraRef]);
   
   // Player movement and physics
   useFrame((state, delta) => {
-    if (!playerRef.current || isPaused || isGameOver) return;
+    if (!playerRef.current || isPaused || isGameOver || !cameraRef.current) return;
     
     // Get player position and update camera
     const position = playerRef.current.translation();
     
     // Update camera position to follow player
-    camera.position.set(position.x, position.y + 1.5, position.z);
-    
-    // Safety check to prevent camera flipping
-    if (camera.rotation.x < -Math.PI / 2 + 0.1 || camera.rotation.x > Math.PI / 2 - 0.1) {
-      console.warn("Camera rotation out of bounds, resetting to safe value");
-      camera.rotation.x = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, camera.rotation.x));
-    }
-    
-    // Always ensure z-rotation is 0 to keep horizon level
-    camera.rotation.z = 0;
+    cameraRef.current.position.set(position.x, position.y + 1.5, position.z);
     
     // Store current rotation for recoil recovery
-    setBaseRotationX(camera.rotation.x);
+    setBaseRotationX(cameraRef.current.rotation.x);
     
     // Calculate movement direction based on camera direction
     const moveDirection = new Vector3();
@@ -434,8 +418,8 @@ export default function Player() {
     const cameraDirection = new Vector3();
     const cameraRight = new Vector3();
     
-    camera.getWorldDirection(cameraDirection);
-    cameraRight.crossVectors(camera.up, cameraDirection).normalize();
+    cameraRef.current.getWorldDirection(cameraDirection);
+    cameraRight.crossVectors(cameraRef.current.up, cameraDirection).normalize();
     
     // Zero out the y component to keep movement horizontal
     cameraDirection.y = 0;
