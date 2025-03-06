@@ -85,7 +85,7 @@ export default function Player({ cameraRef, gameStarted }) {
   
   // Movement parameters
   const SPEED = 8; // Increased speed for better responsiveness
-  const JUMP_FORCE = 12; // Increased from 8 to 12 for higher jumps
+  const JUMP_FORCE = 8; // Reduced from 12 to 8 for lower jumps
   const RUN_MULTIPLIER = 1.5;
   const JUMP_COOLDOWN = 300; // Add a cooldown between jumps (in ms)
   

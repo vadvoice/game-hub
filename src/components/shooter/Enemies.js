@@ -11,7 +11,7 @@ import useGameStore from '@/utils/gameStore';
 const ENEMY_TYPES = {
   basic: {
     health: 100,
-    speed: 3.5,
+    speed: 5.5,
     damage: 10,
     points: 10,
     color: 'red',
@@ -19,7 +19,7 @@ const ENEMY_TYPES = {
   },
   fast: {
     health: 50,
-    speed: 6,
+    speed: 9,
     damage: 5,
     points: 15,
     color: 'orange',
@@ -328,7 +328,7 @@ export default function Enemies() {
   
   // Spawn enemies at random positions
   const spawnEnemy = () => {
-    if (enemies.length >= 10 || isPaused || isGameOver || !playerPosition) return;
+    if (enemies.length >= 20 || isPaused || isGameOver || !playerPosition) return;
     
     // Random position around the player, but not too close
     const angle = Math.random() * Math.PI * 2;
@@ -395,25 +395,16 @@ export default function Enemies() {
   useEffect(() => {
     if (isPaused || isGameOver) return;
     
-    // Initial enemies
-    if (enemies.length === 0 && playerPosition) {
-      // Spawn initial enemies after a delay
-      const initialSpawnTimeout = setTimeout(() => {
-        for (let i = 0; i < 3; i++) {
+    const interval = setInterval(() => {
+      // Spawn multiple enemies at once with a chance
+      const spawnCount = Math.random() < 0.3 ? 2 : 1; // 30% chance to spawn 2 enemies at once
+      
+      for (let i = 0; i < spawnCount; i++) {
+        if (enemies.length < 20) { // Check again to prevent exceeding the limit
           spawnEnemy();
         }
-      }, 2000);
-      
-      return () => clearTimeout(initialSpawnTimeout);
-    }
-    
-    const interval = setInterval(() => {
-      // Increase spawn rate based on number of enemies
-      const spawnChance = 0.5 + (10 - enemies.length) * 0.05;
-      if (Math.random() < spawnChance) {
-        spawnEnemy();
       }
-    }, 3000);
+    }, 2000); // Reduced from 3000ms to 2000ms for more frequent spawns
     
     return () => clearInterval(interval);
   }, [isPaused, isGameOver, enemies.length, playerPosition]);
