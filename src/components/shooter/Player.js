@@ -84,10 +84,9 @@ export default function Player({ cameraRef, gameStarted }) {
   });
   
   // Movement parameters
-  const SPEED = 8; // Increased speed for better responsiveness
-  const JUMP_FORCE = 8; // Reduced from 12 to 8 for lower jumps
+  const SPEED = 8;
+  const JUMP_FORCE = 4; // Reduced from 8 to 4 for lower jumps
   const RUN_MULTIPLIER = 1.5;
-  const JUMP_COOLDOWN = 300; // Add a cooldown between jumps (in ms)
   
   // Handle keyboard input directly
   useEffect(() => {
@@ -473,57 +472,35 @@ export default function Player({ cameraRef, gameStarted }) {
     
     // Handle jumping
     if (keys.jump) {
-      const now = Date.now();
-      // Only jump if the cooldown has passed
-      if (now - lastJumpTime > JUMP_COOLDOWN) {
-        // First jump from ground or second jump in air (double jump)
-        if (onGround || jumpCount < 2) {
-          playerRef.current.setLinvel({ 
-            x: playerRef.current.linvel().x, 
-            y: JUMP_FORCE, 
-            z: playerRef.current.linvel().z 
-          });
-          
-          if (onGround) {
-            // First jump from ground
-            setJumpCount(1);
-          } else {
-            // Second jump in air
-            setJumpCount(2);
-          }
-          
-          // Play jump sound
-          if (jumpSoundRef.current && jumpSoundRef.current.buffer) {
-            if (jumpSoundRef.current.isPlaying) {
-              jumpSoundRef.current.stop();
-            }
-            jumpSoundRef.current.play();
-          }
-          
-          // Create jump effect
-          createJumpEffect(position);
-          
-          setOnGround(false);
-          setLastJumpTime(now);
+      // Remove onGround check temporarily to debug jumping
+      playerRef.current.setLinvel({ 
+        x: playerRef.current.linvel().x, 
+        y: JUMP_FORCE, 
+        z: playerRef.current.linvel().z 
+      });
+      
+      // Play jump sound
+      if (jumpSoundRef.current && jumpSoundRef.current.buffer) {
+        if (jumpSoundRef.current.isPlaying) {
+          jumpSoundRef.current.stop();
         }
+        jumpSoundRef.current.play();
       }
+      
+      // Create jump effect
+      createJumpEffect(position);
     }
     
-    // Check if player is on ground - improved ground detection
-    const rayOrigin = new Vector3(position.x, position.y - 0.5, position.z);
+    // Modify ground detection
+    const rayOrigin = new Vector3(position.x, position.y, position.z);
     const rayDirection = new Vector3(0, -1, 0);
     const ray = new rapier.Ray(rayOrigin, rayDirection);
-    const hit = world.castRay(ray, 1.0, true); // Increased ray distance from 0.75 to 1.0
+    const hit = world.castRay(ray, 0.2, true); // Reduced ray distance for more accurate ground detection
     
-    if (hit && hit.toi < 0.3) { // Increased detection threshold from 0.2 to 0.3
+    if (hit) {
       setOnGround(true);
-      setJumpCount(0); // Reset jump count when touching ground
     } else {
-      // Add a small grace period for jumping after leaving the ground
-      const velocity = playerRef.current.linvel();
-      if (velocity.y < -2) { // If falling fast enough, definitely not on ground
-        setOnGround(false);
-      }
+      setOnGround(false);
     }
     
     // Update player position state
@@ -620,6 +597,17 @@ export default function Player({ cameraRef, gameStarted }) {
       }
     }
   }, [cameraRef, scene]);
+  
+  // Initialize camera position and rotation
+  useEffect(() => {
+    if (!cameraRef.current) return;
+    
+    // Set initial camera rotation to look at horizon (0 degrees on X axis)
+    cameraRef.current.rotation.x = 0;
+    cameraRef.current.rotation.y = 0;
+    cameraRef.current.rotation.z = 0;
+    
+  }, [cameraRef]);
   
   return (
     <>
