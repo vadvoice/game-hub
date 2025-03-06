@@ -22,6 +22,7 @@ const SOUNDS = [
   // '/sounds/gunshot.mp3',
   // '/sounds/reload.mp3',
   // '/sounds/footstep.mp3',
+  '/sounds/jump.mp3',
 ];
 
 // Create loaders

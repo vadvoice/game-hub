@@ -3,9 +3,10 @@
 import { useRef, useState, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { RigidBody, useRapier, CapsuleCollider } from '@react-three/rapier';
-import { Vector3, Raycaster, Quaternion, Euler } from 'three';
+import { Vector3, Raycaster, Quaternion, Euler, Audio, PositionalAudio, AudioListener } from 'three';
 import { useKeyboardControls } from '@react-three/drei';
 import useGameStore from '@/utils/gameStore';
+import * as assetLoader from '@/utils/assetLoader';
 
 // Weapon properties
 const WEAPON_PROPERTIES = {
@@ -39,6 +40,8 @@ const WEAPON_PROPERTIES = {
 
 export default function Player({ cameraRef, gameStarted }) {
   const playerRef = useRef();
+  const audioListenerRef = useRef();
+  const jumpSoundRef = useRef();
   const { scene } = useThree();
   const { rapier, world } = useRapier();
   
@@ -57,10 +60,13 @@ export default function Player({ cameraRef, gameStarted }) {
   const [playerPosition, setPlayerPosition] = useState(new Vector3(0, 1, 0));
   const [playerVelocity, setPlayerVelocity] = useState(new Vector3());
   const [onGround, setOnGround] = useState(true);
+  const [lastJumpTime, setLastJumpTime] = useState(0);
+  const [jumpCount, setJumpCount] = useState(0);
   const [isShooting, setIsShooting] = useState(false);
   const [lastShootTime, setLastShootTime] = useState(0);
   const [bullets, setBullets] = useState([]);
   const [cameraRotation, setCameraRotation] = useState(new Euler());
+  const [jumpEffects, setJumpEffects] = useState([]);
   
   // Recoil state
   const [recoilAmount, setRecoilAmount] = useState(0);
@@ -79,8 +85,9 @@ export default function Player({ cameraRef, gameStarted }) {
   
   // Movement parameters
   const SPEED = 8; // Increased speed for better responsiveness
-  const JUMP_FORCE = 8;
+  const JUMP_FORCE = 12; // Increased from 8 to 12 for higher jumps
   const RUN_MULTIPLIER = 1.5;
+  const JUMP_COOLDOWN = 300; // Add a cooldown between jumps (in ms)
   
   // Handle keyboard input directly
   useEffect(() => {
@@ -465,29 +472,102 @@ export default function Player({ cameraRef, gameStarted }) {
     });
     
     // Handle jumping
-    if (keys.jump && onGround) {
-      playerRef.current.setLinvel({ 
-        x: playerRef.current.linvel().x, 
-        y: JUMP_FORCE, 
-        z: playerRef.current.linvel().z 
-      });
-      setOnGround(false);
+    if (keys.jump) {
+      const now = Date.now();
+      // Only jump if the cooldown has passed
+      if (now - lastJumpTime > JUMP_COOLDOWN) {
+        // First jump from ground or second jump in air (double jump)
+        if (onGround || jumpCount < 2) {
+          playerRef.current.setLinvel({ 
+            x: playerRef.current.linvel().x, 
+            y: JUMP_FORCE, 
+            z: playerRef.current.linvel().z 
+          });
+          
+          if (onGround) {
+            // First jump from ground
+            setJumpCount(1);
+          } else {
+            // Second jump in air
+            setJumpCount(2);
+          }
+          
+          // Play jump sound
+          if (jumpSoundRef.current && jumpSoundRef.current.buffer) {
+            if (jumpSoundRef.current.isPlaying) {
+              jumpSoundRef.current.stop();
+            }
+            jumpSoundRef.current.play();
+          }
+          
+          // Create jump effect
+          createJumpEffect(position);
+          
+          setOnGround(false);
+          setLastJumpTime(now);
+        }
+      }
     }
     
-    // Check if player is on ground
+    // Check if player is on ground - improved ground detection
     const rayOrigin = new Vector3(position.x, position.y - 0.5, position.z);
     const rayDirection = new Vector3(0, -1, 0);
     const ray = new rapier.Ray(rayOrigin, rayDirection);
-    const hit = world.castRay(ray, 0.75, true);
+    const hit = world.castRay(ray, 1.0, true); // Increased ray distance from 0.75 to 1.0
     
-    if (hit && hit.toi < 0.2) {
+    if (hit && hit.toi < 0.3) { // Increased detection threshold from 0.2 to 0.3
       setOnGround(true);
+      setJumpCount(0); // Reset jump count when touching ground
+    } else {
+      // Add a small grace period for jumping after leaving the ground
+      const velocity = playerRef.current.linvel();
+      if (velocity.y < -2) { // If falling fast enough, definitely not on ground
+        setOnGround(false);
+      }
     }
     
     // Update player position state
     const newPosition = new Vector3(position.x, position.y, position.z);
     setPlayerPosition(newPosition);
     updatePlayerPosition(newPosition);
+  });
+  
+  // Create a jump effect
+  const createJumpEffect = (position) => {
+    const effect = {
+      id: Date.now() + Math.random(),
+      position: new Vector3(position.x, position.y, position.z),
+      scale: 1,
+      opacity: 1,
+      createdAt: Date.now(),
+      lifetime: 500, // Effect lasts for 500ms
+    };
+    
+    setJumpEffects(prev => [...prev, effect]);
+  };
+  
+  // Update jump effects
+  useFrame((state, delta) => {
+    if (isPaused || isGameOver) return;
+    
+    // Update jump effects
+    setJumpEffects(prev => {
+      const now = Date.now();
+      return prev
+        .filter(effect => {
+          // Remove effects that have exceeded their lifetime
+          if (now - effect.createdAt > effect.lifetime) {
+            return false;
+          }
+          
+          // Update effect properties
+          const progress = (now - effect.createdAt) / effect.lifetime;
+          effect.scale = 1 + progress * 2;
+          effect.opacity = 1 - progress;
+          
+          return true;
+        });
+    });
   });
   
   // Render bullets
@@ -500,6 +580,46 @@ export default function Player({ cameraRef, gameStarted }) {
       </mesh>
     ));
   };
+  
+  // Render jump effects
+  const renderJumpEffects = () => {
+    return jumpEffects.map(effect => (
+      <mesh key={effect.id} position={effect.position.toArray()}>
+        <ringGeometry args={[0.5, 0.7, 16]} />
+        <meshBasicMaterial 
+          color="#ffffff" 
+          transparent={true} 
+          opacity={effect.opacity}
+        />
+        <group scale={[effect.scale, effect.scale, effect.scale]} />
+      </mesh>
+    ));
+  };
+  
+  // Initialize audio listener and jump sound
+  useEffect(() => {
+    if (!cameraRef.current) return;
+    
+    // Create audio listener if it doesn't exist
+    if (!audioListenerRef.current) {
+      audioListenerRef.current = new AudioListener();
+      cameraRef.current.add(audioListenerRef.current);
+    }
+    
+    // Create jump sound if it doesn't exist
+    if (!jumpSoundRef.current) {
+      jumpSoundRef.current = new PositionalAudio(audioListenerRef.current);
+      scene.add(jumpSoundRef.current);
+      
+      // Load jump sound
+      const jumpSound = assetLoader.getSound('/sounds/jump.mp3');
+      if (jumpSound) {
+        jumpSoundRef.current.setBuffer(jumpSound);
+        jumpSoundRef.current.setRefDistance(1);
+        jumpSoundRef.current.setVolume(0.5);
+      }
+    }
+  }, [cameraRef, scene]);
   
   return (
     <>
@@ -517,6 +637,9 @@ export default function Player({ cameraRef, gameStarted }) {
       
       {/* Render bullets */}
       {renderBullets()}
+      
+      {/* Render jump effects */}
+      {renderJumpEffects()}
     </>
   );
 } 
