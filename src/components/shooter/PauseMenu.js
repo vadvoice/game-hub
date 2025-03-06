@@ -7,19 +7,22 @@ export default function PauseMenu({ onResume }) {
   const resetGame = useGameStore((state) => state.resetGame);
   
   const handleResume = () => {
+    // First toggle the pause state
     togglePause();
-    // Call the onResume callback to lock the pointer
+    
+    // Call the onResume callback to lock the pointer with a slightly longer delay
     if (onResume) {
-      setTimeout(onResume, 100); // Small delay to ensure pause state is updated
+      setTimeout(onResume, 300); // Increased delay to ensure pause state is fully updated
     }
   };
   
   const handleRestart = () => {
+    // Reset the game
     resetGame();
-    // Don't toggle pause since resetGame already sets isPaused to true
+    
     // Call the onResume callback to lock the pointer
     if (onResume) {
-      setTimeout(onResume, 100); // Small delay to ensure pause state is updated
+      setTimeout(onResume, 300); // Increased delay to ensure game state is fully reset
     }
   };
   

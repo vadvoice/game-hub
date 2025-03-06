@@ -108,14 +108,16 @@ export default function ShooterGame() {
     setIsClient(true);
     
     const handleKeyDown = (e) => {
-      console.log("Key pressed:", e.key, e.code);
+      // Only process Escape key if the game has started
       if (e.key === 'Escape' || e.code === 'Escape') {
-        console.log("Escape key pressed, toggling pause");
-        togglePause();
-        
-        // Prevent default behavior
-        e.preventDefault();
-        e.stopPropagation();
+        if (gameStarted) {
+          console.log("Escape key pressed, toggling pause");
+          togglePause();
+          
+          // Prevent default behavior
+          e.preventDefault();
+          e.stopPropagation();
+        }
       }
     };
     
@@ -127,16 +129,18 @@ export default function ShooterGame() {
       window.removeEventListener('keydown', handleKeyDown, { capture: true });
       console.log("Escape key event listener removed");
     };
-  }, [togglePause]);
+  }, [togglePause, gameStarted]);
   
   // Handle pointer lock changes
   useEffect(() => {
     const handleLockChange = () => {
-      setIsLocked(document.pointerLockElement === document.body);
-      console.log("Pointer lock state changed:", document.pointerLockElement === document.body);
+      const isCurrentlyLocked = document.pointerLockElement === document.body;
+      setIsLocked(isCurrentlyLocked);
+      console.log("Pointer lock state changed:", isCurrentlyLocked);
       
       // If we lost pointer lock and game is not paused, pause the game
-      if (!document.pointerLockElement && !isPaused && gameStarted) {
+      if (!isCurrentlyLocked && !isPaused && gameStarted) {
+        console.log("Lost pointer lock, pausing game");
         togglePause();
       }
     };
@@ -147,11 +151,14 @@ export default function ShooterGame() {
   
   // Auto-lock pointer when game starts or unpauses
   useEffect(() => {
-    if (isClient && !isPaused && !isLocked && gameStarted) {
+    if (!isClient || !gameStarted) return;
+    
+    if (!isPaused && !isLocked) {
       // Small delay to ensure everything is loaded
       const timer = setTimeout(() => {
+        console.log("Attempting to lock pointer after unpause");
         lockPointer();
-      }, 100);
+      }, 200); // Increased delay for better reliability
       
       return () => clearTimeout(timer);
     }

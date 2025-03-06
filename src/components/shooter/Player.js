@@ -87,7 +87,10 @@ export default function Player({ cameraRef, gameStarted }) {
     console.log("Setting up keyboard controls");
     
     const handleKeyDown = (e) => {
-      if (!gameStarted || isPaused || isGameOver) return;
+      // Only process movement keys if the game is active
+      if (!gameStarted || isPaused || isGameOver) {
+        return;
+      }
       
       // Update key state - support both WASD and arrow keys
       switch (e.code) {
@@ -127,9 +130,8 @@ export default function Player({ cameraRef, gameStarted }) {
     };
     
     const handleKeyUp = (e) => {
-      if (!gameStarted) return;
-      
-      // Update key state - support both WASD and arrow keys
+      // Always process key up events to prevent keys getting "stuck"
+      // when the game is paused/unpaused
       switch (e.code) {
         case 'KeyW':
         case 'ArrowUp':
@@ -170,6 +172,21 @@ export default function Player({ cameraRef, gameStarted }) {
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, [gameStarted, isPaused, isGameOver, weapons, switchWeapon]);
+  
+  // Reset all movement keys when game is paused or over
+  useEffect(() => {
+    if (isPaused || isGameOver) {
+      // Reset all movement keys to prevent "stuck" keys
+      setKeys({
+        forward: false,
+        backward: false,
+        left: false,
+        right: false,
+        jump: false,
+        shift: false
+      });
+    }
+  }, [isPaused, isGameOver]);
   
   // Find enemies in the scene
   const findEnemies = () => {

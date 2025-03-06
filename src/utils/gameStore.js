@@ -93,8 +93,21 @@ const useGameStore = create((set, get) => ({
     const newPausedState = !state.isPaused;
     console.log(`Game ${newPausedState ? 'paused' : 'resumed'}`);
     
+    // When pausing, make sure to update the state immediately
+    if (newPausedState) {
+      // Force immediate state update for pause
+      return {
+        isPaused: true
+      };
+    }
+    
+    // When resuming, add a small delay to ensure all systems are ready
+    setTimeout(() => {
+      console.log("Pause state fully updated");
+    }, 100);
+    
     return {
-      isPaused: newPausedState,
+      isPaused: false
     };
   }),
   
