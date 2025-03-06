@@ -7,6 +7,7 @@ import { Vector3, Raycaster, Quaternion, Euler, Audio, PositionalAudio, AudioLis
 import { useKeyboardControls } from '@react-three/drei';
 import useGameStore from '@/utils/gameStore';
 import * as assetLoader from '@/utils/assetLoader';
+import { useGLTF } from '@react-three/drei';
 
 // Weapon properties
 const WEAPON_PROPERTIES = {
@@ -37,6 +38,58 @@ const WEAPON_PROPERTIES = {
     bulletColor: '#00ffff',
   },
 };
+
+// Add weapon models and properties
+const WEAPON_MODELS = {
+  pistol: {
+    position: [0.4, -0.3, -0.5], // Right side, slightly down, forward
+    rotation: [0, 0, 0],
+    scale: [0.3, 0.3, 0.3]
+  },
+  shotgun: {
+    position: [0.4, -0.25, -0.6],
+    rotation: [0, 0, 0],
+    scale: [0.35, 0.35, 0.35]
+  },
+  rifle: {
+    position: [0.4, -0.3, -0.7],
+    rotation: [0, 0, 0],
+    scale: [0.3, 0.3, 0.3]
+  }
+};
+
+// Add this component before the Player component
+function WeaponModel({ type, isRecoiling }) {
+  // For now, we'll use simple geometries. Later you can replace with actual weapon models
+  const weaponConfig = WEAPON_MODELS[type];
+  
+  return (
+    <group
+      position={weaponConfig.position}
+      rotation={weaponConfig.rotation}
+      scale={weaponConfig.scale}
+    >
+      {type === 'pistol' && (
+        <mesh>
+          <boxGeometry args={[1, 0.8, 2]} />
+          <meshStandardMaterial color="#444444" />
+        </mesh>
+      )}
+      {type === 'shotgun' && (
+        <mesh>
+          <boxGeometry args={[1, 0.8, 3]} />
+          <meshStandardMaterial color="#8B4513" />
+        </mesh>
+      )}
+      {type === 'rifle' && (
+        <mesh>
+          <boxGeometry args={[1, 0.8, 4]} />
+          <meshStandardMaterial color="#666666" />
+        </mesh>
+      )}
+    </group>
+  );
+}
 
 export default function Player({ cameraRef, gameStarted }) {
   const playerRef = useRef();
@@ -622,6 +675,16 @@ export default function Player({ cameraRef, gameStarted }) {
       >
         <CapsuleCollider args={[0.5, 0.5]} position={[0, 1, 0]} />
       </RigidBody>
+      
+      {/* Add weapon model to camera */}
+      {cameraRef.current && (
+        <primitive object={cameraRef.current}>
+          <WeaponModel 
+            type={currentWeapon} 
+            isRecoiling={isShooting}
+          />
+        </primitive>
+      )}
       
       {/* Render bullets */}
       {renderBullets()}
