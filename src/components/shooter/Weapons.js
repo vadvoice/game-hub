@@ -4,7 +4,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { Vector3 } from 'three';
+import { Html } from '@react-three/drei';
 import useGameStore from '@/utils/gameStore';
+import assetLoader from '@/utils/assetLoader';
 
 // Weapon types with different properties
 const WEAPON_TYPES = {
@@ -15,6 +17,7 @@ const WEAPON_TYPES = {
     scale: [0.2, 0.15, 0.4],
     ammoPerPickup: 15,
     displayName: 'Pistol',
+    texture: '/textures/weapon_pistol.png',
   },
   shotgun: {
     damage: 80,
@@ -23,6 +26,7 @@ const WEAPON_TYPES = {
     scale: [0.25, 0.15, 0.6],
     ammoPerPickup: 8,
     displayName: 'Shotgun',
+    texture: '/textures/weapon_shotgun.png',
   },
   rifle: {
     damage: 40,
@@ -31,6 +35,7 @@ const WEAPON_TYPES = {
     scale: [0.2, 0.15, 0.8],
     ammoPerPickup: 30,
     displayName: 'Rifle',
+    texture: '/textures/weapon_rifle.png',
   },
 };
 
@@ -45,114 +50,92 @@ function WeaponPickup({ position, type, onPickup }) {
   const isPaused = useGameStore((state) => state.isPaused);
   const isGameOver = useGameStore((state) => state.isGameOver);
   
+  // Get weapon texture
+  const weaponTexture = assetLoader.getTexture(WEAPON_TYPES[type].texture);
+  
   // Floating animation
   useFrame((state) => {
     if (!weaponRef.current || !isActive || isPaused || isGameOver) return;
     
     // Floating animation
-    weaponRef.current.setTranslation({
-      x: position[0],
-      y: position[1] + Math.sin(state.clock.elapsedTime * 2) * 0.1 + 0.5,
-      z: position[2],
-    });
+    weaponRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 2) * 0.1;
     
     // Rotation animation
-    weaponRef.current.setRotation({
-      x: 0,
-      y: Math.sin(state.clock.elapsedTime * 0.5),
-      z: 0,
-      w: Math.cos(state.clock.elapsedTime * 0.5),
-    });
+    weaponRef.current.rotation.y += 0.01;
     
-    // Check distance to player
-    if (playerPosition) {
-      const pickupPosition = new Vector3(position[0], position[1], position[2]);
-      const distance = pickupPosition.distanceTo(playerPosition);
-      
-      // Update near player state
-      const wasNear = isNearPlayer;
-      const isNear = distance < 3;
+    // Check if player is near
+    const playerPos = new Vector3(playerPosition.x, playerPosition.y, playerPosition.z);
+    const weaponPos = new Vector3(position[0], position[1], position[2]);
+    const distance = playerPos.distanceTo(weaponPos);
+    
+    const isNear = distance < 3;
+    if (isNear !== isNearPlayer) {
       setIsNearPlayer(isNear);
-      
-      // Show pickup prompt when player gets close
-      if (isNear && !wasNear) {
-        setShowPickupPrompt(true);
-        setTimeout(() => setShowPickupPrompt(false), 3000);
-      }
+      setShowPickupPrompt(isNear);
     }
   });
   
-  // Handle player picking up the weapon
-  const handlePickup = () => {
-    if (!isActive) return;
-    setIsActive(false);
-    onPickup(type);
-  };
-  
-  // Check for player proximity and key press
+  // Handle pickup with E key
   useEffect(() => {
-    const checkProximity = (e) => {
-      if (e.key === 'e' && isActive && isNearPlayer && !isPaused && !isGameOver) {
+    const handleKeyDown = (e) => {
+      if (e.code === 'KeyE' && isNearPlayer && isActive && !isPaused && !isGameOver) {
         handlePickup();
       }
     };
     
-    window.addEventListener('keydown', checkProximity);
-    return () => window.removeEventListener('keydown', checkProximity);
-  }, [isActive, isNearPlayer, isPaused, isGameOver]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isNearPlayer, isActive, isPaused, isGameOver]);
+  
+  const handlePickup = () => {
+    if (!isActive) return;
+    
+    setIsActive(false);
+    setShowPickupPrompt(false);
+    onPickup(type);
+  };
   
   if (!isActive) return null;
   
   return (
-    <>
-      <RigidBody
-        ref={weaponRef}
-        position={position}
-        type="fixed"
+    <group position={position}>
+      <RigidBody 
+        ref={weaponRef} 
+        type="fixed" 
         colliders={false}
-        sensor
+        position={position}
       >
-        <CuboidCollider args={[1, 1, 1]} />
-        <group>
-          {/* Weapon model */}
-          <mesh castShadow>
-            <boxGeometry args={WEAPON_TYPES[type].scale} />
-            <meshStandardMaterial 
-              color={WEAPON_TYPES[type].color} 
-              metalness={0.7} 
-              roughness={0.3} 
-              emissive={isNearPlayer ? WEAPON_TYPES[type].color : 'black'}
-              emissiveIntensity={isNearPlayer ? 0.5 : 0}
-            />
-          </mesh>
-          
-          {/* Glow effect */}
-          <pointLight 
-            position={[0, 0, 0]} 
-            intensity={isNearPlayer ? 1.5 : 0.5} 
-            color={isNearPlayer ? '#ffffff' : WEAPON_TYPES[type].color} 
-            distance={isNearPlayer ? 5 : 3} 
+        <mesh castShadow>
+          <boxGeometry args={WEAPON_TYPES[type].scale} />
+          <meshStandardMaterial 
+            color={WEAPON_TYPES[type].color} 
+            emissive={isNearPlayer ? "#ffffff" : "#000000"}
+            emissiveIntensity={isNearPlayer ? 0.2 : 0}
+            map={weaponTexture}
           />
-        </group>
+        </mesh>
+        
+        <CuboidCollider 
+          args={[
+            WEAPON_TYPES[type].scale[0] / 2,
+            WEAPON_TYPES[type].scale[1] / 2,
+            WEAPON_TYPES[type].scale[2] / 2,
+          ]} 
+          sensor
+          onIntersectionEnter={() => setIsNearPlayer(true)}
+          onIntersectionExit={() => setIsNearPlayer(false)}
+        />
       </RigidBody>
       
-      {/* Pickup prompt - this would be rendered in HTML overlay in a real implementation */}
       {showPickupPrompt && (
-        <Html position={[position[0], position[1] + 1.5, position[2]]}>
-          <div className="bg-black bg-opacity-70 text-white p-2 rounded text-center whitespace-nowrap">
+        <Html position={[0, 1, 0]}>
+          <div className="bg-black bg-opacity-70 text-white px-2 py-1 rounded text-sm whitespace-nowrap">
             Press E to pick up {WEAPON_TYPES[type].displayName}
           </div>
         </Html>
       )}
-    </>
+    </group>
   );
-}
-
-// HTML component for overlay text
-function Html({ position, children }) {
-  // This is a placeholder - in a real implementation, you would use drei's HTML component
-  // or implement a proper HTML overlay system
-  return null;
 }
 
 // Main Weapons component that manages all weapon pickups
@@ -196,21 +179,13 @@ export default function Weapons() {
   
   // Handle weapon pickup
   const handlePickup = (id, type) => {
-    // Play pickup sound (would be implemented in a real game)
-    // playSound('pickup');
+    console.log(`Player picked up ${type} weapon with ID ${id}`);
     
-    // Add weapon to player inventory
+    // Add weapon to player's inventory
     pickupWeapon(type);
     
-    // Remove weapon from world
+    // Remove weapon from the world
     removeWeapon(id);
-    
-    // Spawn a new weapon after some time
-    setTimeout(() => {
-      if (!isPaused && !isGameOver) {
-        spawnWeapon();
-      }
-    }, 10000);
   };
   
   // Spawn weapons periodically
@@ -244,7 +219,7 @@ export default function Weapons() {
           key={weapon.id}
           position={weapon.position}
           type={weapon.type}
-          onPickup={() => handlePickup(weapon.id, weapon.type)}
+          onPickup={(type) => handlePickup(weapon.id, type)}
         />
       ))}
     </>

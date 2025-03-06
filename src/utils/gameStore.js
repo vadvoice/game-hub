@@ -16,7 +16,7 @@ const useGameStore = create((set, get) => ({
   mouseSensitivity: 0.6, // Default sensitivity
   
   // Game state
-  isPaused: false,
+  isPaused: true, // Start paused by default
   isGameOver: false,
   
   // Enemies state
@@ -120,7 +120,7 @@ const useGameStore = create((set, get) => ({
       },
       playerPosition: new Vector3(0, 1, 0),
       mouseSensitivity: 0.6, // Reset to default
-      isPaused: false,
+      isPaused: true,
       isGameOver: false,
       enemies: [],
     });

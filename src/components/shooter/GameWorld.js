@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { Vector3 } from 'three';
 import useGameStore from '@/utils/gameStore';
+import assetLoader from '@/utils/assetLoader';
 
 // Generate random obstacles function (moved outside component)
 function generateObstacles() {
@@ -52,6 +53,10 @@ export default function GameWorld() {
   const floorColor = '#555555';
   const wallColor = '#777777';
   
+  // Get textures from asset loader
+  const floorTexture = assetLoader.getTexture('/textures/floor.jpg');
+  const wallTexture = assetLoader.getTexture('/textures/wall.jpg');
+  
   // Optional: Animate or update the world
   useFrame((state, delta) => {
     // Remove subtle floor animation to keep horizon level
@@ -70,6 +75,7 @@ export default function GameWorld() {
           <planeGeometry args={[110, 110]} /> {/* Increased size to prevent gaps */}
           <meshBasicMaterial 
             color={floorColor}
+            map={floorTexture}
           />
         </mesh>
         
@@ -83,6 +89,7 @@ export default function GameWorld() {
           <boxGeometry args={[10, 0.2, 10]} />
           <meshBasicMaterial 
             color={floorColor}
+            map={floorTexture}
           />
         </mesh>
       </RigidBody>
@@ -92,6 +99,7 @@ export default function GameWorld() {
           <boxGeometry args={[10, 0.2, 10]} />
           <meshBasicMaterial 
             color={floorColor}
+            map={floorTexture}
           />
         </mesh>
       </RigidBody>
@@ -101,6 +109,7 @@ export default function GameWorld() {
           <boxGeometry args={[10, 0.2, 10]} />
           <meshBasicMaterial 
             color={floorColor}
+            map={floorTexture}
           />
         </mesh>
       </RigidBody>
@@ -110,6 +119,7 @@ export default function GameWorld() {
           <boxGeometry args={[10, 0.2, 10]} />
           <meshBasicMaterial 
             color={floorColor}
+            map={floorTexture}
           />
         </mesh>
       </RigidBody>
@@ -120,6 +130,7 @@ export default function GameWorld() {
           <boxGeometry args={[100, 4, 1]} />
           <meshBasicMaterial 
             color={wallColor}
+            map={wallTexture}
           />
         </mesh>
       </RigidBody>
@@ -129,6 +140,7 @@ export default function GameWorld() {
           <boxGeometry args={[100, 4, 1]} />
           <meshBasicMaterial 
             color={wallColor}
+            map={wallTexture}
           />
         </mesh>
       </RigidBody>
@@ -138,6 +150,7 @@ export default function GameWorld() {
           <boxGeometry args={[1, 4, 100]} />
           <meshBasicMaterial 
             color={wallColor}
+            map={wallTexture}
           />
         </mesh>
       </RigidBody>
@@ -147,6 +160,7 @@ export default function GameWorld() {
           <boxGeometry args={[1, 4, 100]} />
           <meshBasicMaterial 
             color={wallColor}
+            map={wallTexture}
           />
         </mesh>
       </RigidBody>

@@ -37,7 +37,7 @@ const WEAPON_PROPERTIES = {
   },
 };
 
-export default function Player({ cameraRef }) {
+export default function Player({ cameraRef, gameStarted }) {
   const playerRef = useRef();
   const { scene } = useThree();
   const { rapier, world } = useRapier();
@@ -87,7 +87,7 @@ export default function Player({ cameraRef }) {
     console.log("Setting up keyboard controls");
     
     const handleKeyDown = (e) => {
-      if (isPaused || isGameOver) return;
+      if (!gameStarted || isPaused || isGameOver) return;
       
       // Update key state - support both WASD and arrow keys
       switch (e.code) {
@@ -127,6 +127,8 @@ export default function Player({ cameraRef }) {
     };
     
     const handleKeyUp = (e) => {
+      if (!gameStarted) return;
+      
       // Update key state - support both WASD and arrow keys
       switch (e.code) {
         case 'KeyW':
@@ -167,7 +169,7 @@ export default function Player({ cameraRef }) {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [isPaused, isGameOver, weapons, switchWeapon]);
+  }, [gameStarted, isPaused, isGameOver, weapons, switchWeapon]);
   
   // Find enemies in the scene
   const findEnemies = () => {
@@ -389,18 +391,18 @@ export default function Player({ cameraRef }) {
   // Handle mouse click for shooting
   useEffect(() => {
     const handleMouseDown = (e) => {
-      if (!isPaused && !isGameOver && e.button === 0) {
+      if (gameStarted && !isPaused && !isGameOver && e.button === 0) {
         shoot();
       }
     };
     
     window.addEventListener('mousedown', handleMouseDown);
     return () => window.removeEventListener('mousedown', handleMouseDown);
-  }, [isPaused, isGameOver, currentWeapon, ammo, cameraRef]);
+  }, [gameStarted, isPaused, isGameOver, currentWeapon, ammo, cameraRef]);
   
   // Player movement and physics
   useFrame((state, delta) => {
-    if (!playerRef.current || isPaused || isGameOver || !cameraRef.current) return;
+    if (!playerRef.current || !gameStarted || isPaused || isGameOver || !cameraRef.current) return;
     
     // Get player position and update camera
     const position = playerRef.current.translation();

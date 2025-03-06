@@ -1,9 +1,9 @@
 'use client';
 
 import { Canvas } from '@react-three/fiber';
-import { Suspense, useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { Physics } from '@react-three/rapier';
-import { Sky, Stars, KeyboardControls } from '@react-three/drei';
+import { Sky, Stars, KeyboardControls, useProgress } from '@react-three/drei';
 import { EffectComposer, Bloom, Noise } from '@react-three/postprocessing';
 import GameWorld from './shooter/GameWorld';
 import Player from './shooter/Player';
@@ -12,6 +12,7 @@ import Weapons from './shooter/Weapons';
 import HUD from './shooter/HUD';
 import useGameStore from '@/utils/gameStore';
 import PauseMenu from './shooter/PauseMenu';
+import assetLoader from '@/utils/assetLoader';
 
 // Define keyboard controls map
 const keyboardMap = [
@@ -22,6 +23,24 @@ const keyboardMap = [
   { name: 'jump', keys: ['Space'] },
 ];
 
+// Loading manager component
+function LoadingManager({ onLoaded }) {
+  const { progress, errors } = useProgress();
+  
+  useEffect(() => {
+    if (progress === 100) {
+      // Add a small delay to ensure everything is properly initialized
+      const timer = setTimeout(() => {
+        onLoaded();
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [progress, onLoaded]);
+  
+  return null;
+}
+
 export default function ShooterGame() {
   const [isClient, setIsClient] = useState(false);
   const isPaused = useGameStore((state) => state.isPaused);
@@ -31,6 +50,9 @@ export default function ShooterGame() {
   const canvasRef = useRef();
   const cameraRef = useRef();
   const [isLocked, setIsLocked] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   
   // Handle pointer lock
   const lockPointer = () => {
@@ -39,6 +61,47 @@ export default function ShooterGame() {
       console.log("Attempting to lock pointer");
     }
   };
+  
+  // Start game with user interaction
+  const startGame = () => {
+    if (isLoading) return; // Prevent starting if still loading
+    
+    setGameStarted(true);
+    if (isPaused) {
+      togglePause();
+    }
+    // Request pointer lock after user interaction
+    setTimeout(lockPointer, 100);
+  };
+  
+  // Handle loading complete
+  const handleLoadingComplete = useCallback(() => {
+    console.log("All resources loaded");
+    setIsLoading(false);
+    setLoadingProgress(100);
+  }, []);
+  
+  // Preload assets when component mounts
+  useEffect(() => {
+    if (isClient) {
+      console.log("Starting asset preloading");
+      
+      // Start preloading assets
+      assetLoader.preloadAssets((progress) => {
+        console.log(`Asset loading progress: ${progress.toFixed(1)}%`);
+        setLoadingProgress(progress);
+      })
+      .then(() => {
+        console.log("Asset preloading complete");
+        handleLoadingComplete();
+      })
+      .catch((error) => {
+        console.error("Error preloading assets:", error);
+        // Still mark as complete to allow game to start
+        handleLoadingComplete();
+      });
+    }
+  }, [isClient, handleLoadingComplete]);
   
   // Handle escape key for pausing
   useEffect(() => {
@@ -73,18 +136,18 @@ export default function ShooterGame() {
       console.log("Pointer lock state changed:", document.pointerLockElement === document.body);
       
       // If we lost pointer lock and game is not paused, pause the game
-      if (!document.pointerLockElement && !isPaused) {
+      if (!document.pointerLockElement && !isPaused && gameStarted) {
         togglePause();
       }
     };
     
     document.addEventListener('pointerlockchange', handleLockChange);
     return () => document.removeEventListener('pointerlockchange', handleLockChange);
-  }, [isPaused, togglePause]);
+  }, [isPaused, togglePause, gameStarted]);
   
   // Auto-lock pointer when game starts or unpauses
   useEffect(() => {
-    if (isClient && !isPaused && !isLocked) {
+    if (isClient && !isPaused && !isLocked && gameStarted) {
       // Small delay to ensure everything is loaded
       const timer = setTimeout(() => {
         lockPointer();
@@ -92,7 +155,7 @@ export default function ShooterGame() {
       
       return () => clearTimeout(timer);
     }
-  }, [isClient, isPaused, isLocked]);
+  }, [isClient, isPaused, isLocked, gameStarted]);
 
   // Handle mouse movement for camera rotation
   useEffect(() => {
@@ -159,13 +222,61 @@ export default function ShooterGame() {
 
   return (
     <>
+      {/* Start Screen with Loading - only shown before game starts */}
+      {!gameStarted && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black bg-opacity-80">
+          <div className="bg-gray-800 p-8 rounded-lg text-center max-w-md">
+            <h1 className="text-4xl font-bold text-white mb-6">FPS SHOOTER</h1>
+            
+            {/* Loading progress bar */}
+            <div className="w-full bg-gray-700 rounded-full h-4 mb-6">
+              <div 
+                className="bg-blue-600 h-4 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${loadingProgress}%` }}
+              />
+            </div>
+            
+            <p className="text-gray-300 mb-8">
+              {isLoading 
+                ? `Loading game resources... ${Math.round(loadingProgress)}%` 
+                : "Click the button below to start the game. The game requires mouse control for aiming."}
+            </p>
+            
+            <button
+              onClick={startGame}
+              disabled={isLoading}
+              className={`${
+                isLoading 
+                  ? "bg-gray-600 cursor-not-allowed" 
+                  : "bg-green-600 hover:bg-green-700"
+              } text-white font-bold py-3 px-8 rounded-lg text-xl transition-colors`}
+            >
+              {isLoading ? "LOADING..." : "START GAME"}
+            </button>
+            
+            <div className="mt-6 text-gray-300 text-sm">
+              <h3 className="font-bold mb-2">Controls:</h3>
+              <ul className="text-left">
+                <li>WASD - Move</li>
+                <li>Mouse - Look around</li>
+                <li>Left Click - Shoot</li>
+                <li>E - Pick up weapons</li>
+                <li>1,2,3 - Switch weapons</li>
+                <li>ESC - Pause/Resume</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Pause Screen - only shown when game is paused after starting */}
       <div 
         className="absolute inset-0 z-10 flex items-center justify-center"
-        style={{ display: isPaused && !isLocked ? 'flex' : 'none' }}
+        style={{ display: isPaused && !isLocked && gameStarted ? 'flex' : 'none' }}
         onClick={lockPointer}
       >
         <div className="bg-black bg-opacity-50 p-4 rounded text-white text-center pointer-events-auto cursor-pointer">
-          Click to play
+          Click to resume
         </div>
       </div>
       
@@ -180,6 +291,8 @@ export default function ShooterGame() {
             camera.rotation.order = 'YXZ'; // Important for FPS controls
           }}
         >
+          <LoadingManager onLoaded={handleLoadingComplete} />
+          
           <Suspense fallback={null}>
             <Sky sunPosition={[100, 20, 100]} />
             <Stars radius={200} depth={50} count={5000} factor={4} />
@@ -194,7 +307,7 @@ export default function ShooterGame() {
             
             <Physics gravity={[0, -9.81, 0]}>
               <GameWorld />
-              <Player cameraRef={cameraRef} />
+              <Player cameraRef={cameraRef} gameStarted={gameStarted} />
               <Enemies />
               <Weapons />
             </Physics>
@@ -207,8 +320,8 @@ export default function ShooterGame() {
         </Canvas>
       </KeyboardControls>
       
-      {!isPaused && <HUD />}
-      {isPaused && <PauseMenu onResume={lockPointer} />}
+      {!isPaused && gameStarted && <HUD />}
+      {isPaused && gameStarted && <PauseMenu onResume={lockPointer} />}
     </>
   );
 } 
