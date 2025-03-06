@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import useGameStore from '@/utils/gameStore';
+import { WEAPON_TYPES } from './Weapons';
 
 export default function HUD() {
   const health = useGameStore((state) => state.health);
@@ -160,58 +161,60 @@ export default function HUD() {
       {/* Main HUD */}
       <div className="absolute inset-x-0 bottom-12 pointer-events-none">
         <div className="container mx-auto px-4">
-          <div className="bg-gray-900 bg-opacity-70 rounded-lg p-4 flex justify-between items-center">
-            {/* Health */}
-            <div className="flex flex-col items-center">
-              <div className="text-white text-sm mb-1">HEALTH</div>
-              <div className="w-40 h-4 bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className={`h-full ${
-                    health > 60 ? 'bg-green-600' : 
-                    health > 30 ? 'bg-yellow-500' : 
-                    'bg-red-600'
-                  }`}
-                  style={{ width: `${health}%` }}
-                ></div>
+          <div className="bg-gray-900 bg-opacity-70 rounded-lg p-4">
+            <div className="flex justify-between items-center mb-3">
+              {/* Health */}
+              <div className="flex flex-col items-center">
+                <div className="text-white text-sm mb-1">HEALTH</div>
+                <div className="w-40 h-4 bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${
+                      health > 60 ? 'bg-green-600' : 
+                      health > 30 ? 'bg-yellow-500' : 
+                      'bg-red-600'
+                    }`}
+                    style={{ width: `${health}%` }}
+                  ></div>
+                </div>
+                <div className="text-white text-sm mt-1">{health}/100</div>
               </div>
-              <div className="text-white text-sm mt-1">{health}/100</div>
+              
+              {/* Score */}
+              <div className="text-center">
+                <div className="text-white text-sm mb-1">SCORE</div>
+                <div className="text-white text-2xl font-bold">{score}</div>
+              </div>
+              
+              {/* Weapon & Ammo */}
+              <div className="flex flex-col items-center">
+                <div className="text-white text-sm mb-1">WEAPON</div>
+                <div className="text-white text-lg font-bold">
+                  {formatWeaponName(currentWeapon)}
+                </div>
+                <div className={`text-white text-sm mt-1 ${ammo[currentWeapon] < 5 ? 'text-red-500 animate-pulse' : ''}`}>
+                  Ammo: {ammo[currentWeapon]}
+                </div>
+              </div>
             </div>
             
-            {/* Score */}
-            <div className="text-center">
-              <div className="text-white text-sm mb-1">SCORE</div>
-              <div className="text-white text-2xl font-bold">{score}</div>
+            {/* Weapon selection - moved inside container */}
+            <div className="flex justify-center gap-2 border-t border-gray-600 pt-3">
+              {weapons
+                .map((weapon, index) => (
+                  <button
+                    key={weapon}
+                    onClick={() => handleWeaponSwitch(weapon)}
+                    className={`px-4 py-2 rounded pointer-events-auto transition-all duration-200 relative ${
+                      currentWeapon === weapon
+                        ? 'bg-blue-600 text-white shadow-lg scale-105'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:scale-102'
+                    }`}
+                  >
+                    <span className="text-xs absolute top-0 right-0 bg-gray-900 bg-opacity-70 px-2 py-1 rounded-full">{index+1}</span>
+                    <div className="w-full text-center h-6 w-6">{WEAPON_TYPES[weapon].icon} </div>
+                  </button>
+                ))}
             </div>
-            
-            {/* Weapon & Ammo */}
-            <div className="flex flex-col items-center">
-              <div className="text-white text-sm mb-1">WEAPON</div>
-              <div className="text-white text-lg font-bold">
-                {formatWeaponName(currentWeapon)}
-              </div>
-              <div className={`text-white text-sm mt-1 ${ammo[currentWeapon] < 5 ? 'text-red-500 animate-pulse' : ''}`}>
-                Ammo: {ammo[currentWeapon]}
-              </div>
-            </div>
-          </div>
-          
-          {/* Weapon selection - excluding pistol */}
-          <div className="mt-2 flex justify-center gap-2">
-            {weapons
-              .filter(weapon => weapon !== 'pistol') // Filter out pistol
-              .map((weapon) => (
-                <button
-                  key={weapon}
-                  onClick={() => handleWeaponSwitch(weapon)}
-                  className={`px-3 py-1 rounded pointer-events-auto ${
-                    currentWeapon === weapon
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 bg-opacity-70 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  {formatWeaponName(weapon)} ({ammo[weapon]})
-                </button>
-              ))}
           </div>
           
           {/* Kill feed */}
