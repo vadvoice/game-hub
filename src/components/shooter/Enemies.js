@@ -4,7 +4,15 @@ import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import { Vector3 } from 'three';
-import { useGLTF } from '@react-three/drei';
+import { 
+  useGLTF, 
+  Float, 
+  MeshDistortMaterial, 
+  Sparkles, 
+  Trail, 
+  Billboard, 
+  Text 
+} from '@react-three/drei';
 import useGameStore from '@/utils/gameStore';
 
 // Enemy types with different properties - moved to a constant outside component
@@ -16,6 +24,8 @@ const ENEMY_TYPES = {
     points: 10,
     color: 'red',
     scale: 1,
+    distort: 0.2,
+    floatIntensity: 0.5,
   },
   fast: {
     health: 50,
@@ -24,6 +34,8 @@ const ENEMY_TYPES = {
     points: 15,
     color: 'orange',
     scale: 0.8,
+    distort: 0.4,
+    floatIntensity: 1,
   },
   heavy: {
     health: 200,
@@ -32,12 +44,15 @@ const ENEMY_TYPES = {
     points: 25,
     color: 'darkred',
     scale: 1.2,
+    distort: 0.1,
+    floatIntensity: 0.3,
   },
 };
 
 // Enemy component
 function Enemy({ position, type = 'basic', initialHealth, onDeath }) {
   const enemyRef = useRef();
+  const trailRef = useRef();
   const [health, setHealth] = useState(initialHealth || ENEMY_TYPES[type].health);
   const [isActive, setIsActive] = useState(true);
   const [isHit, setIsHit] = useState(false);
@@ -237,82 +252,138 @@ function Enemy({ position, type = 'basic', initialHealth, onDeath }) {
       lockAxes={['y']} // Lock Y-axis to prevent sinking
     >
       <CapsuleCollider args={[0.5, 0.5]} position={[0, 1, 0]} />
-      <group scale={isDying ? deathScale * ENEMY_TYPES[type].scale : ENEMY_TYPES[type].scale}>
-        {/* Enemy body */}
-        <mesh castShadow>
-          <capsuleGeometry args={[0.5, 1, 4, 8]} />
-          <meshStandardMaterial 
-            color={isHit ? 'white' : isDying ? '#880000' : ENEMY_TYPES[type].color} 
-            emissive={isHit ? 'white' : isDying ? '#ff0000' : 'black'}
-            emissiveIntensity={isHit ? 0.5 : isDying ? 0.8 : 0}
-            transparent={isDying}
-            opacity={isDying ? Math.max(0, deathScale) : 1}
-          />
-        </mesh>
-        
-        {/* Eyes */}
-        <mesh position={[0.2, 1.4, 0.4]}>
-          <sphereGeometry args={[0.1, 16, 16]} />
-          <meshStandardMaterial 
-            color={isDying ? 'red' : 'white'} 
-            emissive={isDying ? 'red' : 'white'}
-            emissiveIntensity={isDying ? 0.8 : 0}
-            transparent={isDying}
-            opacity={isDying ? Math.max(0, deathScale) : 1}
-          />
-        </mesh>
-        <mesh position={[-0.2, 1.4, 0.4]}>
-          <sphereGeometry args={[0.1, 16, 16]} />
-          <meshStandardMaterial 
-            color={isDying ? 'red' : 'white'} 
-            emissive={isDying ? 'red' : 'white'}
-            emissiveIntensity={isDying ? 0.8 : 0}
-            transparent={isDying}
-            opacity={isDying ? Math.max(0, deathScale) : 1}
-          />
-        </mesh>
-        
-        {/* Health bar - only show if not dying */}
-        {!isDying && (
-          <group position={[0, 2, 0]}>
-            <mesh position={[0, 0, 0]} scale={[1, 0.1, 0.1]}>
-              <boxGeometry />
-              <meshBasicMaterial color="black" />
-            </mesh>
-            <mesh 
-              position={[(healthPercent - 100) / 200, 0, 0.06]} 
-              scale={[healthPercent / 100, 0.08, 0.08]}
-            >
-              <boxGeometry />
-              <meshBasicMaterial color={
-                healthPercent > 60 ? 'green' : 
-                healthPercent > 30 ? 'yellow' : 
-                'red'
-              } />
-            </mesh>
-          </group>
-        )}
-        
-        {/* Death effect particles - only render when dying */}
-        {isDying && Array.from({ length: 5 }).map((_, i) => (
-          <mesh 
-            key={i} 
-            position={[
-              (Math.random() - 0.5) * 2,
-              (Math.random() - 0.5) * 2,
-              (Math.random() - 0.5) * 2
-            ]}
-            scale={[0.1, 0.1, 0.1]}
-          >
-            <sphereGeometry args={[1, 8, 8]} />
-            <meshBasicMaterial 
-              color="red" 
-              transparent 
-              opacity={Math.max(0, deathScale - 0.2)}
+      
+      {/* Float component for hovering effect */}
+      <Float 
+        speed={2} 
+        rotationIntensity={0.2} 
+        floatIntensity={isDying ? 0 : ENEMY_TYPES[type].floatIntensity}
+        enabled={!isDying}
+      >
+        <group scale={isDying ? deathScale * ENEMY_TYPES[type].scale : ENEMY_TYPES[type].scale}>
+          {/* Enemy body with distortion material */}
+          <mesh castShadow>
+            <capsuleGeometry args={[0.5, 1, 8, 16]} />
+            <MeshDistortMaterial
+              color={isHit ? 'white' : isDying ? '#880000' : ENEMY_TYPES[type].color}
+              emissive={isHit ? 'white' : isDying ? '#ff0000' : 'black'}
+              emissiveIntensity={isHit ? 0.5 : isDying ? 0.8 : 0}
+              transparent={isDying}
+              opacity={isDying ? Math.max(0, deathScale) : 1}
+              distort={isDying ? 1.0 : ENEMY_TYPES[type].distort}
+              speed={isDying ? 5 : 2}
+              roughness={0.3}
+              metalness={0.8}
             />
           </mesh>
-        ))}
-      </group>
+          
+          {/* Eyes with glow effect */}
+          <mesh position={[0.2, 1.4, 0.4]}>
+            <sphereGeometry args={[0.1, 16, 16]} />
+            <meshStandardMaterial 
+              color={isDying ? 'red' : 'white'} 
+              emissive={isDying ? 'red' : 'white'}
+              emissiveIntensity={isDying ? 0.8 : 0.5}
+              transparent={isDying}
+              opacity={isDying ? Math.max(0, deathScale) : 1}
+            />
+          </mesh>
+          <mesh position={[-0.2, 1.4, 0.4]}>
+            <sphereGeometry args={[0.1, 16, 16]} />
+            <meshStandardMaterial 
+              color={isDying ? 'red' : 'white'} 
+              emissive={isDying ? 'red' : 'white'}
+              emissiveIntensity={isDying ? 0.8 : 0.5}
+              transparent={isDying}
+              opacity={isDying ? Math.max(0, deathScale) : 1}
+            />
+          </mesh>
+          
+          {/* Sparkles for visual effect */}
+          <Sparkles 
+            count={20} 
+            scale={3} 
+            size={0.4} 
+            speed={0.3} 
+            color={ENEMY_TYPES[type].color}
+            opacity={isDying ? deathScale * 0.5 : 0.5}
+          />
+          
+          {/* Trail effect for movement */}
+          {!isDying && type === 'fast' && (
+            <Trail
+              ref={trailRef}
+              width={1}
+              length={5}
+              color={ENEMY_TYPES[type].color}
+              attenuation={(width) => width}
+              opacity={0.5}
+            >
+              <mesh position={[0, 0.5, -0.5]}>
+                <sphereGeometry args={[0.1, 8, 8]} />
+                <meshBasicMaterial color={ENEMY_TYPES[type].color} transparent opacity={0.5} />
+              </mesh>
+            </Trail>
+          )}
+          
+          {/* Health bar - only show if not dying */}
+          {!isDying && (
+            <Billboard position={[0, 2.2, 0]} follow={true}>
+              <group>
+                <mesh position={[0, 0, 0]} scale={[1, 0.1, 0.1]}>
+                  <boxGeometry />
+                  <meshBasicMaterial color="black" />
+                </mesh>
+                <mesh 
+                  position={[(healthPercent - 100) / 200, 0, 0.06]} 
+                  scale={[healthPercent / 100, 0.08, 0.08]}
+                >
+                  <boxGeometry />
+                  <meshBasicMaterial color={
+                    healthPercent > 60 ? 'green' : 
+                    healthPercent > 30 ? 'yellow' : 
+                    'red'
+                  } />
+                </mesh>
+              </group>
+            </Billboard>
+          )}
+          
+          {/* Enemy type label */}
+          {!isDying && (
+            <Billboard position={[0, 2.5, 0]} follow={true}>
+              <Text
+                fontSize={0.2}
+                color={ENEMY_TYPES[type].color}
+                anchorX="center"
+                anchorY="middle"
+              >
+                {type.toUpperCase()}
+              </Text>
+            </Billboard>
+          )}
+          
+          {/* Death effect particles - only render when dying */}
+          {isDying && Array.from({ length: 15 }).map((_, i) => (
+            <mesh 
+              key={i} 
+              position={[
+                (Math.random() - 0.5) * 2,
+                (Math.random() - 0.5) * 2,
+                (Math.random() - 0.5) * 2
+              ]}
+              scale={[0.1, 0.1, 0.1]}
+            >
+              <sphereGeometry args={[1, 8, 8]} />
+              <meshBasicMaterial 
+                color={ENEMY_TYPES[type].color} 
+                transparent 
+                opacity={Math.max(0, deathScale - 0.2)}
+              />
+            </mesh>
+          ))}
+        </group>
+      </Float>
     </RigidBody>
   );
 }
