@@ -316,7 +316,7 @@ export default function ShooterGame() {
               <GameWorld />
               <Player cameraRef={cameraRef} gameStarted={gameStarted} />
               <Enemies />
-              <Weapons />
+              {/* <Weapons /> */}
             </Physics>
             
             <EffectComposer>

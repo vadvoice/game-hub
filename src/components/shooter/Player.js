@@ -3,11 +3,10 @@
 import { useRef, useState, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { RigidBody, useRapier, CapsuleCollider } from '@react-three/rapier';
-import { Vector3, Raycaster, Quaternion, Euler, Audio, PositionalAudio, AudioListener } from 'three';
-import { useKeyboardControls } from '@react-three/drei';
+import { Vector3, Raycaster, Quaternion, Euler, Audio, PositionalAudio, AudioListener, MathUtils } from 'three';
+import { useKeyboardControls, useTexture, MeshWobbleMaterial, Float, useGLTF, MeshDistortMaterial, Sparkles, Center } from '@react-three/drei';
 import useGameStore from '@/utils/gameStore';
 import * as assetLoader from '@/utils/assetLoader';
-import { useGLTF } from '@react-three/drei';
 
 // Weapon properties
 const WEAPON_PROPERTIES = {
@@ -44,24 +43,69 @@ const WEAPON_MODELS = {
   pistol: {
     position: [0.4, -0.3, -0.5], // Right side, slightly down, forward
     rotation: [0, 0, 0],
-    scale: [0.3, 0.3, 0.3]
+    scale: [0.3, 0.3, 0.3],
+    wobbleSpeed: 0.5,
+    wobbleFactor: 0.1,
+    sparkleCount: 5,
+    sparkleSize: 0.3,
+    sparkleSpeed: 0.3,
+    floatIntensity: 0.1
   },
   shotgun: {
     position: [0.4, -0.25, -0.6],
     rotation: [0, 0, 0],
-    scale: [0.35, 0.35, 0.35]
+    scale: [0.35, 0.35, 0.35],
+    wobbleSpeed: 0.3,
+    wobbleFactor: 0.05,
+    sparkleCount: 8,
+    sparkleSize: 0.4,
+    sparkleSpeed: 0.2,
+    floatIntensity: 0.05
   },
   rifle: {
     position: [0.4, -0.3, -0.7],
     rotation: [0, 0, 0],
-    scale: [0.3, 0.3, 0.3]
+    scale: [0.3, 0.3, 0.3],
+    wobbleSpeed: 0.7,
+    wobbleFactor: 0.03,
+    sparkleCount: 10,
+    sparkleSize: 0.2,
+    sparkleSpeed: 0.5,
+    floatIntensity: 0.08
   }
 };
 
-// Add this component before the Player component
+// Enhanced WeaponModel component with Drei features
 function WeaponModel({ type, isRecoiling }) {
-  // For now, we'll use simple geometries. Later you can replace with actual weapon models
   const weaponConfig = WEAPON_MODELS[type];
+  const groupRef = useRef();
+  
+  // Load weapon textures
+  const texturePath = `/textures/weapon_${type}.png`;
+  const texture = useTexture(texturePath);
+  
+  // Apply recoil animation
+  useFrame((state, delta) => {
+    if (groupRef.current) {
+      // Return to original position if not recoiling
+      if (!isRecoiling) {
+        groupRef.current.position.z = MathUtils.lerp(
+          groupRef.current.position.z,
+          0,
+          delta * 5
+        );
+        groupRef.current.rotation.x = MathUtils.lerp(
+          groupRef.current.rotation.x,
+          0,
+          delta * 5
+        );
+      } else {
+        // Apply recoil effect
+        groupRef.current.position.z = 0.2;
+        groupRef.current.rotation.x = -0.2;
+      }
+    }
+  });
   
   return (
     <group
@@ -69,24 +113,150 @@ function WeaponModel({ type, isRecoiling }) {
       rotation={weaponConfig.rotation}
       scale={weaponConfig.scale}
     >
-      {type === 'pistol' && (
-        <mesh>
-          <boxGeometry args={[1, 0.8, 2]} />
-          <meshStandardMaterial color="#444444" />
-        </mesh>
-      )}
-      {type === 'shotgun' && (
-        <mesh>
-          <boxGeometry args={[1, 0.8, 3]} />
-          <meshStandardMaterial color="#8B4513" />
-        </mesh>
-      )}
-      {type === 'rifle' && (
-        <mesh>
-          <boxGeometry args={[1, 0.8, 4]} />
-          <meshStandardMaterial color="#666666" />
-        </mesh>
-      )}
+      <Float 
+        speed={1} 
+        rotationIntensity={0} 
+        floatIntensity={weaponConfig.floatIntensity}
+      >
+        <Center>
+          <group ref={groupRef}>
+            {type === 'pistol' && (
+              <>
+                {/* Pistol body */}
+                <mesh position={[0, 0, 0]}>
+                  <boxGeometry args={[1, 0.8, 2]} />
+                  <MeshWobbleMaterial 
+                    map={texture} 
+                    factor={weaponConfig.wobbleFactor} 
+                    speed={weaponConfig.wobbleSpeed}
+                    metalness={0.8}
+                    roughness={0.2}
+                  />
+                </mesh>
+                {/* Pistol handle */}
+                <mesh position={[0, -0.8, 0.5]}>
+                  <boxGeometry args={[0.8, 1.2, 0.8]} />
+                  <meshStandardMaterial 
+                    map={texture} 
+                    metalness={0.5}
+                    roughness={0.5}
+                  />
+                </mesh>
+                {/* Pistol barrel */}
+                <mesh position={[0, 0.1, -1.2]} rotation={[Math.PI/2, 0, 0]}>
+                  <cylinderGeometry args={[0.2, 0.2, 1, 16]} />
+                  <MeshDistortMaterial 
+                    color="#333333" 
+                    metalness={0.9}
+                    roughness={0.1}
+                    distort={0.2}
+                  />
+                </mesh>
+                <Sparkles 
+                  count={weaponConfig.sparkleCount} 
+                  scale={weaponConfig.sparkleSize} 
+                  size={2} 
+                  speed={weaponConfig.sparkleSpeed} 
+                  color="#ffff80" 
+                />
+              </>
+            )}
+            
+            {type === 'shotgun' && (
+              <>
+                {/* Shotgun body */}
+                <mesh position={[0, 0, 0]}>
+                  <boxGeometry args={[1, 0.8, 3]} />
+                  <MeshWobbleMaterial 
+                    map={texture} 
+                    factor={weaponConfig.wobbleFactor} 
+                    speed={weaponConfig.wobbleSpeed}
+                    metalness={0.6}
+                    roughness={0.3}
+                  />
+                </mesh>
+                {/* Shotgun handle */}
+                <mesh position={[0, -0.8, 0.8]}>
+                  <boxGeometry args={[0.8, 1.5, 0.8]} />
+                  <meshStandardMaterial 
+                    map={texture} 
+                    metalness={0.3}
+                    roughness={0.7}
+                  />
+                </mesh>
+                {/* Shotgun barrel */}
+                <mesh position={[0, 0.1, -1.8]} rotation={[Math.PI/2, 0, 0]}>
+                  <cylinderGeometry args={[0.3, 0.3, 1.5, 16]} />
+                  <MeshDistortMaterial 
+                    color="#222222" 
+                    metalness={0.9}
+                    roughness={0.1}
+                    distort={0.1}
+                  />
+                </mesh>
+                <Sparkles 
+                  count={weaponConfig.sparkleCount} 
+                  scale={weaponConfig.sparkleSize} 
+                  size={2} 
+                  speed={weaponConfig.sparkleSpeed} 
+                  color="#ff8040" 
+                />
+              </>
+            )}
+            
+            {type === 'rifle' && (
+              <>
+                {/* Rifle body */}
+                <mesh position={[0, 0, 0]}>
+                  <boxGeometry args={[1, 0.8, 4]} />
+                  <MeshWobbleMaterial 
+                    map={texture} 
+                    factor={weaponConfig.wobbleFactor} 
+                    speed={weaponConfig.wobbleSpeed}
+                    metalness={0.7}
+                    roughness={0.2}
+                  />
+                </mesh>
+                {/* Rifle handle */}
+                <mesh position={[0, -0.8, 1]}>
+                  <boxGeometry args={[0.8, 1.3, 0.8]} />
+                  <meshStandardMaterial 
+                    map={texture} 
+                    metalness={0.4}
+                    roughness={0.6}
+                  />
+                </mesh>
+                {/* Rifle barrel */}
+                <mesh position={[0, 0.1, -2.5]} rotation={[Math.PI/2, 0, 0]}>
+                  <cylinderGeometry args={[0.2, 0.2, 2, 16]} />
+                  <MeshDistortMaterial 
+                    color="#444444" 
+                    metalness={0.9}
+                    roughness={0.1}
+                    distort={0.05}
+                  />
+                </mesh>
+                {/* Rifle scope */}
+                <mesh position={[0, 0.6, -0.5]}>
+                  <cylinderGeometry args={[0.2, 0.2, 1, 16]} />
+                  <meshStandardMaterial 
+                    color="#111111" 
+                    metalness={0.9}
+                    roughness={0.1}
+                  />
+                </mesh>
+                <Sparkles 
+                  count={weaponConfig.sparkleCount} 
+                  scale={weaponConfig.sparkleSize} 
+                  size={2} 
+                  speed={weaponConfig.sparkleSpeed} 
+                  color="#40e0ff" 
+                />
+              </>
+            )}
+          </group>
+        </Center>
+      </Float>
     </group>
   );
 }

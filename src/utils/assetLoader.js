@@ -12,9 +12,9 @@ const TEXTURES = [
 
 const MODELS = [
   // Add model paths here when you have them
-  // '/models/weapon_pistol.glb',
-  // '/models/weapon_shotgun.glb',
-  // '/models/weapon_rifle.glb',
+  '/models/weapon_pistol.glb',
+  '/models/weapon_shotgun.glb',
+  '/models/weapon_rifle.glb',
 ];
 
 const SOUNDS = [
