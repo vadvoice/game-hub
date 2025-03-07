@@ -1,17 +1,17 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import { Vector3 } from 'three';
 import { useGLTF } from '@react-three/drei';
 import useGameStore from '@/utils/gameStore';
 
-// Enemy types with different properties
+// Enemy types with different properties - moved to a constant outside component
 const ENEMY_TYPES = {
   basic: {
     health: 100,
-    speed: 5.5,
+    speed: 3,
     damage: 10,
     points: 10,
     color: 'red',
@@ -46,8 +46,8 @@ function Enemy({ position, type = 'basic', initialHealth, onDeath }) {
   // Death animation states
   const [isDying, setIsDying] = useState(false);
   const [deathStartTime, setDeathStartTime] = useState(0);
+  const [deathDirection, setDeathDirection] = useState(() => new Vector3());
   const [deathRotation, setDeathRotation] = useState({ x: 0, y: 0, z: 0 });
-  const [deathDirection, setDeathDirection] = useState(new Vector3());
   const [deathScale, setDeathScale] = useState(1);
   
   const isPaused = useGameStore((state) => state.isPaused);
@@ -56,16 +56,9 @@ function Enemy({ position, type = 'basic', initialHealth, onDeath }) {
   const takeDamage = useGameStore((state) => state.takeDamage);
   const addScore = useGameStore((state) => state.addScore);
   
-  // Log health initialization for debugging
-  useEffect(() => {
-    console.log(`Enemy of type ${type} initialized with ${health} health`);
-  }, [type, health]);
-  
-  // Handle enemy being hit
-  const hit = (damage) => {
+  // Handle enemy being hit - memoized with useCallback
+  const hit = useCallback((damage) => {
     if (!isActive || isDying) return;
-    
-    console.log(`Enemy hit with ${damage} damage!`);
     
     setIsHit(true);
     setTimeout(() => setIsHit(false), 150); // Flash effect
@@ -79,14 +72,13 @@ function Enemy({ position, type = 'basic', initialHealth, onDeath }) {
         // Add score based on enemy type
         const points = ENEMY_TYPES[type].points;
         addScore(points);
-        console.log(`Enemy killed! +${points} points`);
       }
       return newHealth;
     });
-  };
+  }, [isActive, isDying, type, addScore]);
   
-  // Start death animation
-  const startDeathAnimation = () => {
+  // Start death animation - memoized with useCallback
+  const startDeathAnimation = useCallback(() => {
     setIsDying(true);
     setDeathStartTime(Date.now());
     setIsActive(false); // Stop normal behavior
@@ -105,12 +97,7 @@ function Enemy({ position, type = 'basic', initialHealth, onDeath }) {
       y: (Math.random() - 0.5) * 0.1,
       z: (Math.random() - 0.5) * 0.1
     });
-    
-    // Play death sound (would be implemented in a real game)
-    // playSound('enemy-death');
-    
-    console.log("Enemy death animation started");
-  };
+  }, []);
   
   // Ensure enemy is positioned correctly on spawn
   useEffect(() => {
@@ -123,6 +110,17 @@ function Enemy({ position, type = 'basic', initialHealth, onDeath }) {
       });
     }
   }, [position]);
+  
+  // Set userData.hit when component mounts or hit function changes
+  useEffect(() => {
+    if (enemyRef.current) {
+      enemyRef.current.userData = { 
+        ...enemyRef.current.userData,
+        type: 'enemy', 
+        hit 
+      };
+    }
+  }, [hit]);
   
   // Enemy AI movement and death animation
   useFrame((state, delta) => {
@@ -152,15 +150,16 @@ function Enemy({ position, type = 'basic', initialHealth, onDeath }) {
         w: currentRotation.w
       });
       
-      // Shrink the enemy as it dies
-      const newScale = Math.max(0.01, 1 - elapsedTime * 0.5); // Shrink over 2 seconds
-      setDeathScale(newScale);
+      // Scale down enemy during death animation
+      setDeathScale(Math.max(0, 1 - elapsedTime)); // Linear scale down over 1 second
       
-      // Remove enemy after animation completes
-      if (elapsedTime > 2) {
+      // Stop movement after death starts
+      enemyRef.current.setLinvel({ x: 0, y: 0, z: 0 });
+      
+      // Remove enemy when animation completes
+      if (elapsedTime > 1) {
         onDeath();
       }
-      
       return;
     }
     
@@ -235,7 +234,6 @@ function Enemy({ position, type = 'basic', initialHealth, onDeath }) {
       colliders={false}
       type="dynamic"
       mass={1}
-      userData={{ type: 'enemy', hit }}
       lockAxes={['y']} // Lock Y-axis to prevent sinking
     >
       <CapsuleCollider args={[0.5, 0.5]} position={[0, 1, 0]} />
@@ -295,7 +293,7 @@ function Enemy({ position, type = 'basic', initialHealth, onDeath }) {
           </group>
         )}
         
-        {/* Death effect particles */}
+        {/* Death effect particles - only render when dying */}
         {isDying && Array.from({ length: 5 }).map((_, i) => (
           <mesh 
             key={i} 
@@ -326,9 +324,12 @@ export default function Enemies() {
   const isGameOver = useGameStore((state) => state.isGameOver);
   const playerPosition = useGameStore((state) => state.playerPosition);
   
-  // Spawn enemies at random positions
-  const spawnEnemy = () => {
-    if (enemies.length >= 20 || isPaused || isGameOver || !playerPosition) return;
+  // Maximum number of enemies - moved to a constant
+  const MAX_ENEMIES = 20;
+  
+  // Spawn enemies at random positions - memoized with useCallback
+  const spawnEnemy = useCallback(() => {
+    if (!playerPosition || enemies.length >= MAX_ENEMIES || isPaused || isGameOver) return;
     
     // Random position around the player, but not too close
     const angle = Math.random() * Math.PI * 2;
@@ -351,28 +352,25 @@ export default function Enemies() {
     }
     
     const newEnemy = {
-      id: Date.now() + Math.random(),
+      id: `enemy-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // More unique ID
       position: [x, 1.5, z], // Ensure y position is above ground
       type,
       health: ENEMY_TYPES[type].health, // Explicitly set initial health
     };
     
     setEnemies((prev) => [...prev, newEnemy]);
-    console.log(`Spawned ${type} enemy at position [${x.toFixed(2)}, 1.5, ${z.toFixed(2)}] with ${ENEMY_TYPES[type].health} health`);
-  };
+  }, [playerPosition, enemies.length, isPaused, isGameOver]);
   
-  // Remove enemy when killed
-  const removeEnemy = (id) => {
-    console.log(`Removing enemy with id ${id}`);
+  // Remove enemy when killed - memoized with useCallback
+  const removeEnemy = useCallback((id) => {
     setEnemies((prev) => prev.filter((enemy) => enemy.id !== id));
-  };
+  }, []);
   
-  // Force spawn an enemy for testing
+  // Force spawn an enemy for testing - only when no enemies and player exists
   useEffect(() => {
-    if (playerPosition && enemies.length === 0) {
+    if (playerPosition && enemies.length === 0 && !isPaused && !isGameOver) {
       // Spawn an enemy right in front of the player for testing
-      const direction = new Vector3();
-      direction.set(0, 0, 1); // Forward direction
+      const direction = new Vector3(0, 0, 1); // Forward direction
       
       const spawnPosition = new Vector3(
         playerPosition.x + direction.x * 10,
@@ -381,37 +379,40 @@ export default function Enemies() {
       );
       
       const testEnemy = {
-        id: Date.now(),
+        id: `test-enemy-${Date.now()}`,
         position: [spawnPosition.x, 1.5, spawnPosition.z],
         type: 'basic',
+        health: ENEMY_TYPES['basic'].health,
       };
       
       setEnemies([testEnemy]);
-      console.log("Spawned test enemy in front of player");
     }
-  }, [playerPosition]);
+  }, [playerPosition, enemies.length, isPaused, isGameOver]);
   
   // Spawn enemies periodically
   useEffect(() => {
-    if (isPaused || isGameOver) return;
+    if (isPaused || isGameOver || !playerPosition) return;
     
     const interval = setInterval(() => {
       // Spawn multiple enemies at once with a chance
       const spawnCount = Math.random() < 0.3 ? 2 : 1; // 30% chance to spawn 2 enemies at once
       
       for (let i = 0; i < spawnCount; i++) {
-        if (enemies.length < 20) { // Check again to prevent exceeding the limit
+        if (enemies.length < MAX_ENEMIES) { // Check again to prevent exceeding the limit
           spawnEnemy();
         }
       }
-    }, 2000); // Reduced from 3000ms to 2000ms for more frequent spawns
+    }, 2000); // Spawn frequency
     
     return () => clearInterval(interval);
-  }, [isPaused, isGameOver, enemies.length, playerPosition]);
+  }, [isPaused, isGameOver, enemies.length, playerPosition, spawnEnemy]);
+  
+  // Memoize the enemies array to prevent unnecessary re-renders
+  const memoizedEnemies = useMemo(() => enemies, [enemies]);
   
   return (
     <>
-      {enemies.map((enemy) => (
+      {memoizedEnemies.map((enemy) => (
         <Enemy
           key={enemy.id}
           position={enemy.position}
