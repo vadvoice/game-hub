@@ -204,14 +204,14 @@ export default function HUD() {
                   <button
                     key={weapon}
                     onClick={() => handleWeaponSwitch(weapon)}
-                    className={`px-4 py-2 rounded pointer-events-auto transition-all duration-200 relative ${
+                    className={`flex flex-col items-center gap-2 px-4 py-2 rounded pointer-events-auto transition-all duration-200 relative ${
                       currentWeapon === weapon
                         ? 'bg-blue-600 text-white shadow-lg scale-105'
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:scale-102'
                     }`}
                   >
                     <span className="text-xs absolute top-0 right-0 bg-gray-900 bg-opacity-70 px-2 py-1 rounded-full">{index+1}</span>
-                    <div className="w-full text-center h-6 w-6">{WEAPON_TYPES[weapon].icon} </div>
+                    <div className="h-6 w-6">{WEAPON_TYPES[weapon].icon} </div>
                   </button>
                 ))}
             </div>
